@@ -1,0 +1,844 @@
+// Multi-Vendor Vehicle Rental Marketplace — Core Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+// ENUMS
+// ──────────────────────────────────────────────
+
+enum UserType {
+  CUSTOMER
+  RENTAL_PARTNER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum PartnerVerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+enum DocumentType {
+  BUSINESS_LICENSE
+  GST_CERTIFICATE
+  IDENTITY_PROOF
+  ADDRESS_PROOF
+  BANK_PROOF
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VehicleApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VehicleTransmission {
+  MANUAL
+  AUTOMATIC
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  ELECTRIC
+  HYBRID
+  CNG
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  APPROVED
+  REJECTED
+  VEHICLE_READY
+  PICKED_UP
+  ACTIVE
+  RETURNING
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  STRIPE
+  WALLET
+}
+
+enum TransactionType {
+  BOOKING_PAYMENT
+  REFUND
+  PAYOUT
+  WALLET_TOPUP
+  WALLET_DEBIT
+  COMMISSION
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+  SMS
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum CouponType {
+  FLAT
+  PERCENTAGE
+}
+
+enum DrivingLicenseStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum BlogStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// ──────────────────────────────────────────────
+// AUTH / RBAC
+// ──────────────────────────────────────────────
+
+model User {
+  id                String        @id @default(uuid())
+  email             String        @unique
+  phone             String?       @unique
+  passwordHash      String
+  firstName         String
+  lastName          String
+  avatarUrl         String?
+  userType          UserType
+  accountStatus     AccountStatus @default(PENDING_VERIFICATION)
+  emailVerifiedAt   DateTime?
+  phoneVerifiedAt   DateTime?
+  referralCode      String?       @unique
+  referredById      String?
+  referredBy        User?         @relation("Referrals", fields: [referredById], references: [id])
+  referrals         User[]        @relation("Referrals")
+  loyaltyPoints     Int           @default(0)
+  lastLoginAt       DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  roles             UserRole[]
+  rentalPartner     RentalPartner?
+  drivingLicenses   DrivingLicense[]
+  bookings          Booking[]
+  reviews           Review[]
+  reviewReplies     ReviewReply[]
+  wishlist          WishlistItem[]
+  savedLocations    SavedLocation[]
+  wallet            Wallet?
+  notifications     Notification[]
+  supportTickets    SupportTicket[]
+  supportMessages    SupportTicketMessage[]
+  refreshTokens     RefreshToken[]
+  otpCodes          OtpCode[]
+  auditLogs         AuditLog[]
+  activityLogs      ActivityLog[]
+  reviewReports     ReviewReport[]
+
+  @@index([userType])
+  @@index([accountStatus])
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  permissions RolePermission[]
+  users       UserRole[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String           @unique // e.g. "vehicles.create"
+  module      String           // e.g. "vehicles"
+  description String?
+
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  userId    String
+  code      String
+  purpose   String   // EMAIL_VERIFICATION | PHONE_VERIFICATION | PASSWORD_RESET
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+}
+
+// ──────────────────────────────────────────────
+// GEOGRAPHY
+// ──────────────────────────────────────────────
+
+model Country {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String   @unique
+  isActive  Boolean  @default(true)
+  cities    City[]
+  createdAt DateTime @default(now())
+}
+
+model City {
+  id         String   @id @default(uuid())
+  name       String
+  countryId  String
+  latitude   Decimal? @db.Decimal(9, 6)
+  longitude  Decimal? @db.Decimal(9, 6)
+  isPopular  Boolean  @default(false)
+  isActive   Boolean  @default(true)
+  imageUrl   String?
+  createdAt  DateTime @default(now())
+
+  country        Country         @relation(fields: [countryId], references: [id])
+  rentalPartners RentalPartner[]
+  vehicles       Vehicle[]
+  savedLocations SavedLocation[]
+
+  @@unique([name, countryId])
+}
+
+// ──────────────────────────────────────────────
+// RENTAL PARTNER
+// ──────────────────────────────────────────────
+
+model RentalPartner {
+  id                 String                    @id @default(uuid())
+  userId             String                    @unique
+  businessName       String
+  businessEmail      String
+  businessPhone      String
+  cityId             String
+  address            String
+  latitude           Decimal?                  @db.Decimal(9, 6)
+  longitude          Decimal?                  @db.Decimal(9, 6)
+  logoUrl            String?
+  description        String?
+  verificationStatus PartnerVerificationStatus @default(PENDING)
+  commissionRate     Decimal                   @default(10) @db.Decimal(5, 2)
+  averageRating       Decimal                  @default(0) @db.Decimal(3, 2)
+  totalReviews        Int                      @default(0)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  user           User               @relation(fields: [userId], references: [id])
+  city           City               @relation(fields: [cityId], references: [id])
+  documents      BusinessDocument[]
+  bankDetails    BankDetail?
+  vehicles       Vehicle[]
+  bookings       Booking[]
+  reviews        Review[]
+  subscriptions  PartnerSubscription[]
+  payouts        Transaction[]
+  supportTickets SupportTicket[]
+
+  @@index([verificationStatus])
+  @@index([cityId])
+}
+
+model BusinessDocument {
+  id              String         @id @default(uuid())
+  rentalPartnerId String
+  type            DocumentType
+  fileUrl         String
+  status          DocumentStatus @default(PENDING)
+  rejectionReason String?
+  uploadedAt      DateTime       @default(now())
+  reviewedAt      DateTime?
+
+  rentalPartner RentalPartner @relation(fields: [rentalPartnerId], references: [id], onDelete: Cascade)
+
+  @@index([rentalPartnerId])
+}
+
+model BankDetail {
+  id              String   @id @default(uuid())
+  rentalPartnerId String   @unique
+  accountHolder   String
+  accountNumber   String
+  ifscCode        String
+  bankName        String
+  branch          String?
+  updatedAt       DateTime @updatedAt
+
+  rentalPartner RentalPartner @relation(fields: [rentalPartnerId], references: [id], onDelete: Cascade)
+}
+
+model SubscriptionPlan {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  description   String?
+  price         Decimal  @db.Decimal(10, 2)
+  durationDays  Int
+  maxVehicles   Int?
+  features      Json?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  subscriptions PartnerSubscription[]
+}
+
+model PartnerSubscription {
+  id              String             @id @default(uuid())
+  rentalPartnerId String
+  planId          String
+  status          SubscriptionStatus @default(ACTIVE)
+  startedAt       DateTime           @default(now())
+  expiresAt       DateTime
+
+  rentalPartner RentalPartner    @relation(fields: [rentalPartnerId], references: [id])
+  plan          SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([rentalPartnerId])
+}
+
+// ──────────────────────────────────────────────
+// VEHICLES
+// ──────────────────────────────────────────────
+
+model VehicleCategory {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  slug      String    @unique
+  iconUrl   String?
+  isActive  Boolean   @default(true)
+  vehicles  Vehicle[]
+  createdAt DateTime  @default(now())
+}
+
+model VehicleBrand {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  logoUrl   String?
+  isActive  Boolean   @default(true)
+  vehicles  Vehicle[]
+  createdAt DateTime  @default(now())
+}
+
+model Vehicle {
+  id                 String                 @id @default(uuid())
+  rentalPartnerId    String
+  categoryId         String
+  brandId            String
+  cityId             String
+  model              String
+  year               Int
+  registrationNumber String                 @unique
+  transmission       VehicleTransmission
+  fuelType           FuelType
+  seatingCapacity    Int
+  pricePerHour        Decimal               @db.Decimal(10, 2)
+  pricePerDay         Decimal               @db.Decimal(10, 2)
+  securityDeposit     Decimal               @default(0) @db.Decimal(10, 2)
+  insuranceDetails    String?
+  rentalPolicies      String?
+  latitude           Decimal?               @db.Decimal(9, 6)
+  longitude          Decimal?               @db.Decimal(9, 6)
+  approvalStatus     VehicleApprovalStatus  @default(PENDING)
+  rejectionReason    String?
+  isActive           Boolean                @default(true)
+  averageRating      Decimal                @default(0) @db.Decimal(3, 2)
+  totalReviews       Int                    @default(0)
+  totalBookings      Int                    @default(0)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  rentalPartner RentalPartner            @relation(fields: [rentalPartnerId], references: [id])
+  category      VehicleCategory          @relation(fields: [categoryId], references: [id])
+  brand         VehicleBrand             @relation(fields: [brandId], references: [id])
+  city          City                     @relation(fields: [cityId], references: [id])
+  images        VehicleImage[]
+  availability  VehicleAvailability[]
+  bookings      Booking[]
+  reviews       Review[]
+  wishlistedBy  WishlistItem[]
+
+  @@index([rentalPartnerId])
+  @@index([categoryId])
+  @@index([cityId])
+  @@index([approvalStatus])
+}
+
+model VehicleImage {
+  id        String   @id @default(uuid())
+  vehicleId String
+  url       String
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+}
+
+// Blocks vehicle availability for maintenance or manual holds.
+// Actual booking-date conflicts are resolved against the Booking table.
+model VehicleAvailability {
+  id        String   @id @default(uuid())
+  vehicleId String
+  startDate DateTime
+  endDate   DateTime
+  reason    String?  // e.g. "maintenance"
+  createdAt DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, startDate, endDate])
+}
+
+// ──────────────────────────────────────────────
+// DRIVING LICENSE
+// ──────────────────────────────────────────────
+
+model DrivingLicense {
+  id             String               @id @default(uuid())
+  userId         String
+  licenseNumber  String
+  frontImageUrl  String
+  backImageUrl   String?
+  expiryDate     DateTime
+  status         DrivingLicenseStatus @default(PENDING)
+  rejectionReason String?
+  verifiedAt     DateTime?
+  createdAt      DateTime             @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([userId])
+}
+
+// ──────────────────────────────────────────────
+// COUPONS / OFFERS
+// ──────────────────────────────────────────────
+
+model Coupon {
+  id             String     @id @default(uuid())
+  code           String     @unique
+  type           CouponType
+  value          Decimal    @db.Decimal(10, 2)
+  maxDiscount    Decimal?   @db.Decimal(10, 2)
+  minBookingValue Decimal?  @db.Decimal(10, 2)
+  usageLimit     Int?
+  usageCount     Int        @default(0)
+  perUserLimit   Int        @default(1)
+  validFrom      DateTime
+  validUntil     DateTime
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+
+  bookings Booking[]
+}
+
+model Offer {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  imageUrl    String?
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+// ──────────────────────────────────────────────
+// BOOKINGS
+// ──────────────────────────────────────────────
+
+model Booking {
+  id               String        @id @default(uuid())
+  bookingNumber    String        @unique
+  customerId       String
+  vehicleId        String
+  rentalPartnerId  String
+  drivingLicenseId String?
+  couponId         String?
+  pickupDatetime   DateTime
+  returnDatetime   DateTime
+  pickupLocation   String
+  returnLocation   String
+  basePrice        Decimal       @db.Decimal(10, 2)
+  discountAmount   Decimal       @default(0) @db.Decimal(10, 2)
+  taxAmount        Decimal       @default(0) @db.Decimal(10, 2)
+  securityDeposit  Decimal       @default(0) @db.Decimal(10, 2)
+  totalAmount      Decimal       @db.Decimal(10, 2)
+  status           BookingStatus @default(PENDING)
+  cancellationReason String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  customer       User            @relation(fields: [customerId], references: [id])
+  vehicle        Vehicle         @relation(fields: [vehicleId], references: [id])
+  rentalPartner  RentalPartner   @relation(fields: [rentalPartnerId], references: [id])
+  drivingLicense DrivingLicense? @relation(fields: [drivingLicenseId], references: [id])
+  coupon         Coupon?         @relation(fields: [couponId], references: [id])
+
+  statusHistory BookingStatusHistory[]
+  payments      Payment[]
+  invoice       Invoice?
+  review        Review?
+
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([rentalPartnerId])
+  @@index([status])
+  @@index([pickupDatetime, returnDatetime])
+}
+
+// Powers the visual rental-tracking timeline on web + mobile.
+model BookingStatusHistory {
+  id        String        @id @default(uuid())
+  bookingId String
+  status    BookingStatus
+  note      String?
+  changedById String?
+  createdAt DateTime      @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+}
+
+// ──────────────────────────────────────────────
+// PAYMENTS / TRANSACTIONS / WALLET
+// ──────────────────────────────────────────────
+
+model Payment {
+  id             String          @id @default(uuid())
+  bookingId      String
+  provider       PaymentProvider
+  providerRefId  String?
+  amount         Decimal         @db.Decimal(10, 2)
+  status         PaymentStatus   @default(PENDING)
+  paidAt         DateTime?
+  refundedAmount Decimal         @default(0) @db.Decimal(10, 2)
+  createdAt      DateTime        @default(now())
+
+  booking      Booking       @relation(fields: [bookingId], references: [id])
+  transactions Transaction[]
+
+  @@index([bookingId])
+}
+
+model Transaction {
+  id              String            @id @default(uuid())
+  type            TransactionType
+  status          TransactionStatus @default(PENDING)
+  amount          Decimal           @db.Decimal(10, 2)
+  paymentId       String?
+  rentalPartnerId String?
+  walletId        String?
+  reference       String?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+
+  payment       Payment?       @relation(fields: [paymentId], references: [id])
+  rentalPartner RentalPartner? @relation(fields: [rentalPartnerId], references: [id])
+  wallet        Wallet?        @relation(fields: [walletId], references: [id])
+
+  @@index([rentalPartnerId])
+  @@index([walletId])
+}
+
+model Invoice {
+  id          String   @id @default(uuid())
+  bookingId   String   @unique
+  invoiceNumber String @unique
+  pdfUrl      String?
+  issuedAt    DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  balance   Decimal  @default(0) @db.Decimal(10, 2)
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+}
+
+// ──────────────────────────────────────────────
+// REVIEWS
+// ──────────────────────────────────────────────
+
+model Review {
+  id              String   @id @default(uuid())
+  bookingId       String   @unique
+  customerId      String
+  vehicleId       String
+  rentalPartnerId String
+  vehicleRating   Int
+  partnerRating   Int
+  comment         String?
+  isReported      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  booking       Booking        @relation(fields: [bookingId], references: [id])
+  customer      User           @relation(fields: [customerId], references: [id])
+  vehicle       Vehicle        @relation(fields: [vehicleId], references: [id])
+  rentalPartner RentalPartner  @relation(fields: [rentalPartnerId], references: [id])
+  images        ReviewImage[]
+  replies       ReviewReply[]
+  reports       ReviewReport[]
+
+  @@index([vehicleId])
+  @@index([rentalPartnerId])
+}
+
+model ReviewImage {
+  id       String @id @default(uuid())
+  reviewId String
+  url      String
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+}
+
+model ReviewReply {
+  id        String   @id @default(uuid())
+  reviewId  String
+  authorId  String
+  message   String
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+}
+
+model ReviewReport {
+  id        String   @id @default(uuid())
+  reviewId  String
+  reportedById String
+  reason    String
+  createdAt DateTime @default(now())
+
+  review     Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reportedBy User   @relation(fields: [reportedById], references: [id])
+}
+
+// ──────────────────────────────────────────────
+// WISHLIST / SAVED LOCATIONS
+// ──────────────────────────────────────────────
+
+model WishlistItem {
+  userId    String
+  vehicleId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, vehicleId])
+}
+
+model SavedLocation {
+  id        String   @id @default(uuid())
+  userId    String
+  cityId    String
+  label     String
+  address   String
+  latitude  Decimal? @db.Decimal(9, 6)
+  longitude Decimal? @db.Decimal(9, 6)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city City @relation(fields: [cityId], references: [id])
+}
+
+// ──────────────────────────────────────────────
+// NOTIFICATIONS / SUPPORT
+// ──────────────────────────────────────────────
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  channel   NotificationChannel
+  title     String
+  message   String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model SupportTicket {
+  id              String              @id @default(uuid())
+  userId          String
+  rentalPartnerId String?
+  subject         String
+  status          SupportTicketStatus @default(OPEN)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id])
+  rentalPartner RentalPartner?  @relation(fields: [rentalPartnerId], references: [id])
+  messages      SupportTicketMessage[]
+
+  @@index([status])
+}
+
+model SupportTicketMessage {
+  id        String   @id @default(uuid())
+  ticketId  String
+  authorId  String
+  message   String
+  createdAt DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorId], references: [id])
+}
+
+// ──────────────────────────────────────────────
+// CMS / BLOG / SETTINGS / LOGS
+// ──────────────────────────────────────────────
+
+model CmsPage {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  title     String
+  content   String
+  updatedAt DateTime @updatedAt
+}
+
+model BlogPost {
+  id          String     @id @default(uuid())
+  slug        String     @unique
+  title       String
+  excerpt     String?
+  content     String
+  coverImageUrl String?
+  status      BlogStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  activity  String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}

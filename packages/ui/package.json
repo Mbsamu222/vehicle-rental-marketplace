@@ -1,0 +1,19 @@
+{
+  "name": "@vrm/ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@vrm/api-client": "*",
+    "framer-motion": "^12.4.0",
+    "lucide-react": "^1.25.0",
+    "clsx": "^2.1.1"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "next": "^16.0.0"
+  }
+}
