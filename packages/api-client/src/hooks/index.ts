@@ -6,21 +6,52 @@ import {
   bookingsApi,
   catalogApi,
   couponsApi,
+  monetizationApi,
   notificationsApi,
   paymentsApi,
+  payoutsApi,
   rentalPartnersApi,
   reviewsApi,
+  subscriptionsApi,
   supportApi,
   usersApi,
   vehiclesApi,
+  type CreateAdSlotInput,
+  type CreateAffiliatePartnerInput,
   type CreateBookingInput,
+  type CreateHeroBannerSlideInput,
   type CreatePartnerProfileInput,
+  type CreateSubscriptionPlanInput,
   type CreateVehicleInput,
+  type UpdateBrandInput,
+  type UpdateCategoryInput,
+  type UpdateCityInput,
+  type UpdateCountryInput,
   type VehicleSearchParams,
 } from "../endpoints";
-import type { BookingStatus, DocumentStatus, DocumentType, DrivingLicenseStatus, PaymentProvider, UserType } from "../types";
+import type {
+  BookingStatus,
+  DocumentStatus,
+  DocumentType,
+  DrivingLicenseStatus,
+  MonetizationFeatureKey,
+  PaymentProvider,
+  UserType,
+} from "../types";
 
 type QueryOpts<T> = Omit<UseQueryOptions<T>, "queryKey" | "queryFn">;
+
+// ─── Monetization status (public) ───
+// A single cached fetch (react-query dedupes calls across every component that
+// uses this hook) — the frontend's one source of truth for "is this toggle on."
+
+export function useMonetizationStatus() {
+  return useQuery({
+    queryKey: ["monetization", "status"],
+    queryFn: () => monetizationApi.status(),
+    staleTime: 60_000,
+  });
+}
 
 // ─── Catalog ───
 
@@ -29,6 +60,10 @@ export const catalogKeys = {
   cities: (params?: { countryId?: string; popular?: boolean }) => ["catalog", "cities", params] as const,
   categories: ["catalog", "categories"] as const,
   brands: ["catalog", "brands"] as const,
+  adminCountries: ["catalog", "admin", "countries"] as const,
+  adminCities: ["catalog", "admin", "cities"] as const,
+  adminCategories: ["catalog", "admin", "categories"] as const,
+  adminBrands: ["catalog", "admin", "brands"] as const,
 };
 
 export function useCountries(opts?: QueryOpts<Awaited<ReturnType<typeof catalogApi.countries>>>) {
@@ -42,6 +77,118 @@ export function useVehicleCategories() {
 }
 export function useVehicleBrands() {
   return useQuery({ queryKey: catalogKeys.brands, queryFn: catalogApi.brands });
+}
+export function useAdSlots() {
+  return useQuery({ queryKey: ["catalog", "ad-slots"], queryFn: catalogApi.adSlots });
+}
+export function useAffiliatePartners() {
+  return useQuery({ queryKey: ["catalog", "affiliate-partners"], queryFn: catalogApi.affiliatePartners });
+}
+
+// Admin catalog management (includes inactive entries)
+export function useAdminCountries() {
+  return useQuery({ queryKey: catalogKeys.adminCountries, queryFn: catalogApi.adminCountries });
+}
+export function useAdminCities() {
+  return useQuery({ queryKey: catalogKeys.adminCities, queryFn: catalogApi.adminCities });
+}
+export function useAdminVehicleCategories() {
+  return useQuery({ queryKey: catalogKeys.adminCategories, queryFn: catalogApi.adminCategories });
+}
+export function useAdminVehicleBrands() {
+  return useQuery({ queryKey: catalogKeys.adminBrands, queryFn: catalogApi.adminBrands });
+}
+
+function invalidateCatalog(qc: ReturnType<typeof useQueryClient>) {
+  return qc.invalidateQueries({ queryKey: ["catalog"] });
+}
+
+export function useCreateCountry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: catalogApi.createCountry,
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+export function useUpdateCountry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateCountryInput }) => catalogApi.updateCountry(id, input),
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+export function useDeleteCountry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => catalogApi.removeCountry(id),
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+
+export function useCreateCity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: catalogApi.createCity,
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+export function useUpdateCity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateCityInput }) => catalogApi.updateCity(id, input),
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+export function useDeleteCity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => catalogApi.removeCity(id),
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+
+export function useCreateVehicleCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: catalogApi.createCategory,
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+export function useUpdateVehicleCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateCategoryInput }) => catalogApi.updateCategory(id, input),
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+export function useDeleteVehicleCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => catalogApi.removeCategory(id),
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+
+export function useCreateVehicleBrand() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: catalogApi.createBrand,
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+export function useUpdateVehicleBrand() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateBrandInput }) => catalogApi.updateBrand(id, input),
+    onSuccess: () => invalidateCatalog(qc),
+  });
+}
+export function useDeleteVehicleBrand() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => catalogApi.removeBrand(id),
+    onSuccess: () => invalidateCatalog(qc),
+  });
 }
 
 // ─── Vehicles ───
@@ -103,6 +250,14 @@ export function useReviewVehicle() {
   return useMutation({
     mutationFn: ({ id, status, rejectionReason }: { id: string; status: "APPROVED" | "REJECTED"; rejectionReason?: string }) =>
       vehiclesApi.review(id, status, rejectionReason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["vehicles"] }),
+  });
+}
+export function useBoostVehicle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, days, amountCharged }: { id: string; days: number; amountCharged: number }) =>
+      vehiclesApi.boost(id, days, amountCharged),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["vehicles"] }),
   });
 }
@@ -179,6 +334,13 @@ export function useCreateBooking() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bookings"] }),
   });
 }
+export function useCancellationPreview(id: string | undefined) {
+  return useQuery({
+    queryKey: ["bookings", id, "cancellation-preview"],
+    queryFn: () => bookingsApi.cancellationPreview(id as string),
+    enabled: !!id,
+  });
+}
 export function useCancelBooking() {
   const qc = useQueryClient();
   return useMutation({
@@ -189,8 +351,8 @@ export function useCancelBooking() {
 export function useUpdateBookingStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status, note }: { id: string; status: BookingStatus; note?: string }) =>
-      bookingsApi.updateStatus(id, status, note),
+    mutationFn: ({ id, status, note, actualReturnAt }: { id: string; status: BookingStatus; note?: string; actualReturnAt?: string }) =>
+      bookingsApi.updateStatus(id, status, note, actualReturnAt),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bookings"] }),
   });
 }
@@ -203,8 +365,12 @@ export function useMyPayments() {
 export function useWallet() {
   return useQuery({ queryKey: ["payments", "wallet"], queryFn: paymentsApi.wallet });
 }
-export function useTransactions(params?: { type?: string; rentalPartnerId?: string }) {
-  return useQuery({ queryKey: ["payments", "transactions", params], queryFn: () => paymentsApi.listTransactions(params) });
+export function useTransactions(params?: { type?: string; rentalPartnerId?: string; customerId?: string }) {
+  return useQuery({
+    queryKey: ["payments", "transactions", params],
+    queryFn: () => paymentsApi.listTransactions(params),
+    enabled: params?.customerId === undefined || !!params.customerId,
+  });
 }
 export function useCreatePaymentOrder() {
   return useMutation({
@@ -226,6 +392,22 @@ export function useRefundPayment() {
     mutationFn: ({ id, amount, reason }: { id: string; amount?: number; reason?: string }) =>
       paymentsApi.refund(id, amount, reason),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["payments"] }),
+  });
+}
+
+// ─── Payouts ───
+
+export function usePayouts() {
+  return useQuery({ queryKey: ["payouts"], queryFn: () => payoutsApi.list() });
+}
+export function usePartnerPayouts() {
+  return useQuery({ queryKey: ["payouts", "mine"], queryFn: () => payoutsApi.listMine() });
+}
+export function useCreatePayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (rentalPartnerId: string) => payoutsApi.create(rentalPartnerId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["payouts"] }),
   });
 }
 
@@ -414,6 +596,60 @@ export function useReviewPartnerDocument() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["rental-partners"] }),
   });
 }
+export function usePartnerAnalytics() {
+  return useQuery({ queryKey: ["rental-partners", "analytics"], queryFn: rentalPartnersApi.getAnalytics, retry: false });
+}
+
+// ─── Subscriptions ───
+
+export function useSubscriptionPlans() {
+  return useQuery({ queryKey: ["subscriptions", "plans"], queryFn: subscriptionsApi.listPlans });
+}
+export function useAdminSubscriptionPlans() {
+  return useQuery({ queryKey: ["subscriptions", "plans", "admin"], queryFn: subscriptionsApi.adminListPlans });
+}
+export function useCreateSubscriptionPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateSubscriptionPlanInput) => subscriptionsApi.createPlan(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["subscriptions", "plans"] }),
+  });
+}
+export function useUpdateSubscriptionPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<CreateSubscriptionPlanInput> }) =>
+      subscriptionsApi.updatePlan(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["subscriptions", "plans"] }),
+  });
+}
+export function useDeleteSubscriptionPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => subscriptionsApi.deletePlan(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["subscriptions", "plans"] }),
+  });
+}
+export function useMySubscription() {
+  return useQuery({ queryKey: ["subscriptions", "mine"], queryFn: subscriptionsApi.getMySubscription, retry: false });
+}
+export function useRequestSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (planId: string) => subscriptionsApi.requestSubscription(planId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["subscriptions", "mine"] }),
+  });
+}
+export function usePendingSubscriptions() {
+  return useQuery({ queryKey: ["subscriptions", "pending"], queryFn: subscriptionsApi.listPending });
+}
+export function useConfirmSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => subscriptionsApi.confirm(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["subscriptions"] }),
+  });
+}
 
 // ─── Admin ───
 
@@ -422,6 +658,13 @@ export function useAdminDashboard() {
 }
 export function useAdminUsers(params?: { userType?: UserType; status?: string }) {
   return useQuery({ queryKey: ["admin", "users", params], queryFn: () => adminApi.listUsers(params) });
+}
+export function useAdminUser(id: string | undefined) {
+  return useQuery({
+    queryKey: ["admin", "users", id],
+    queryFn: () => adminApi.getUserById(id as string),
+    enabled: !!id,
+  });
 }
 export function useUpdateUserStatus() {
   const qc = useQueryClient();
@@ -493,6 +736,35 @@ export function useUpsertBlogPost() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["blog"] }),
   });
 }
+export function useHeroBanners() {
+  return useQuery({ queryKey: ["hero-banners"], queryFn: () => adminApi.listHeroBanners() });
+}
+export function useAdminHeroBanners() {
+  return useQuery({ queryKey: ["hero-banners", "admin"], queryFn: () => adminApi.adminListHeroBanners() });
+}
+export function useCreateHeroBanner() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateHeroBannerSlideInput) => adminApi.createHeroBanner(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hero-banners"] }),
+  });
+}
+export function useUpdateHeroBanner() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<CreateHeroBannerSlideInput> }) =>
+      adminApi.updateHeroBanner(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hero-banners"] }),
+  });
+}
+export function useDeleteHeroBanner() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.deleteHeroBanner(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["hero-banners"] }),
+  });
+}
+
 export function useAdminDrivingLicenses(status?: DrivingLicenseStatus) {
   return useQuery({
     queryKey: ["admin", "driving-licenses", status],
@@ -505,5 +777,75 @@ export function useReviewDrivingLicense() {
     mutationFn: ({ id, status, rejectionReason }: { id: string; status: "VERIFIED" | "REJECTED"; rejectionReason?: string }) =>
       adminApi.reviewDrivingLicense(id, status, rejectionReason),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "driving-licenses"] }),
+  });
+}
+
+// ─── Monetization ───
+
+export function useMonetizationFeatures() {
+  return useQuery({ queryKey: ["monetization", "features"], queryFn: () => adminApi.listMonetizationFeatures() });
+}
+export function useUpdateMonetizationFeature() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      key,
+      input,
+    }: {
+      key: MonetizationFeatureKey;
+      input: { isEnabled?: boolean; config?: Record<string, unknown> };
+    }) => adminApi.updateMonetizationFeature(key, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["monetization", "features"] }),
+  });
+}
+
+export function useAdminAdSlots() {
+  return useQuery({ queryKey: ["ad-slots", "admin"], queryFn: () => adminApi.adminListAdSlots() });
+}
+export function useCreateAdSlot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateAdSlotInput) => adminApi.createAdSlot(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ad-slots"] }),
+  });
+}
+export function useUpdateAdSlot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<CreateAdSlotInput> }) => adminApi.updateAdSlot(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ad-slots"] }),
+  });
+}
+export function useDeleteAdSlot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.deleteAdSlot(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ad-slots"] }),
+  });
+}
+
+export function useAdminAffiliatePartners() {
+  return useQuery({ queryKey: ["affiliate-partners", "admin"], queryFn: () => adminApi.adminListAffiliatePartners() });
+}
+export function useCreateAffiliatePartner() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateAffiliatePartnerInput) => adminApi.createAffiliatePartner(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["affiliate-partners"] }),
+  });
+}
+export function useUpdateAffiliatePartner() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<CreateAffiliatePartnerInput> }) =>
+      adminApi.updateAffiliatePartner(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["affiliate-partners"] }),
+  });
+}
+export function useDeleteAffiliatePartner() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.deleteAffiliatePartner(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["affiliate-partners"] }),
   });
 }

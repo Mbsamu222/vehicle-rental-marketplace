@@ -24,6 +24,19 @@ export type SupportTicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED"
 export type CouponType = "FLAT" | "PERCENTAGE";
 export type DrivingLicenseStatus = "PENDING" | "VERIFIED" | "REJECTED";
 export type BlogStatus = "DRAFT" | "PUBLISHED";
+export type MonetizationFeatureKey =
+  | "BOOKING_COMMISSION"
+  | "PAYOUT_FEE"
+  | "SERVICE_FEE"
+  | "EXTRA_DRIVER_FEE"
+  | "YOUNG_DRIVER_FEE"
+  | "LATE_RETURN_FEE"
+  | "CANCELLATION_FEE"
+  | "BOOSTED_LISTINGS"
+  | "SPONSORED_PLACEMENTS"
+  | "AFFILIATE_PROGRAM"
+  | "PARTNER_SUBSCRIPTIONS"
+  | "FLEET_ANALYTICS";
 
 export const BOOKING_STATUS_FLOW: BookingStatus[] = [
   "PENDING",
@@ -50,15 +63,6 @@ export interface User {
   referralCode?: string | null;
   loyaltyPoints: number;
   createdAt: string;
-}
-
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-}
-
-export interface AuthResult extends AuthTokens {
-  user: User;
 }
 
 export interface Country {
@@ -121,6 +125,8 @@ export interface Vehicle {
   approvalStatus: VehicleApprovalStatus;
   rejectionReason?: string | null;
   isActive: boolean;
+  isFeatured: boolean;
+  featuredUntil?: string | null;
   averageRating: string;
   totalReviews: number;
   totalBookings: number;
@@ -169,6 +175,7 @@ export interface BankDetail {
   ifscCode: string;
   bankName: string;
   branch?: string | null;
+  upiId?: string | null;
 }
 
 export interface DrivingLicense {
@@ -212,9 +219,17 @@ export interface Booking {
   discountAmount: string;
   taxAmount: string;
   securityDeposit: string;
+  serviceFeeAmount: string;
+  extraDriverFeeAmount: string;
+  youngDriverFeeAmount: string;
+  extraDriverCount: number;
+  isYoungDriver: boolean;
   totalAmount: string;
   status: BookingStatus;
   cancellationReason?: string | null;
+  cancellationFeeAmount: string;
+  actualReturnAt?: string | null;
+  lateReturnFeeAmount: string;
   createdAt: string;
   vehicle?: Vehicle;
   rentalPartner?: RentalPartner;
@@ -248,7 +263,8 @@ export type TransactionType =
   | "PAYOUT"
   | "WALLET_TOPUP"
   | "WALLET_DEBIT"
-  | "COMMISSION";
+  | "COMMISSION"
+  | "LATE_RETURN_FEE";
 export type TransactionStatus = "PENDING" | "SUCCESS" | "FAILED";
 
 export interface Transaction {
@@ -309,6 +325,62 @@ export interface SupportTicket {
   messages?: SupportTicketMessage[];
 }
 
+export type SubscriptionStatus = "PENDING" | "ACTIVE" | "EXPIRED" | "CANCELLED";
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: string;
+  durationDays: number;
+  maxVehicles?: number | null;
+  features?: Record<string, unknown> | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface PartnerSubscription {
+  id: string;
+  rentalPartnerId: string;
+  planId: string;
+  status: SubscriptionStatus;
+  startedAt: string;
+  expiresAt: string;
+  plan?: SubscriptionPlan | null;
+  rentalPartner?: RentalPartner | null;
+}
+
+export interface PartnerAnalyticsTopVehicle {
+  vehicleId: string;
+  model: string;
+  totalRevenue: string | number;
+  totalBookings: number;
+}
+
+export interface PartnerAnalyticsCategoryDemand {
+  categoryName: string;
+  bookingCount: number;
+}
+
+export interface PartnerAnalytics {
+  vehicleCount: number;
+  utilizationPercent: string | number;
+  averageRevenuePerVehicle: string | number;
+  topVehicles: PartnerAnalyticsTopVehicle[];
+  categoryDemand: PartnerAnalyticsCategoryDemand[];
+}
+
+export type MonetizationStatus = Record<MonetizationFeatureKey, boolean>;
+
+export interface MonetizationFeature {
+  id: string;
+  key: MonetizationFeatureKey;
+  isEnabled: boolean;
+  config: Record<string, unknown> | null;
+  updatedById?: string | null;
+  updatedAt: string;
+}
+
 export interface Coupon {
   id: string;
   code: string;
@@ -340,6 +412,60 @@ export interface BlogPost {
   coverImageUrl?: string | null;
   status: BlogStatus;
   publishedAt?: string | null;
+  createdAt: string;
+}
+
+export interface HeroBannerSlide {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  imageUrl: string;
+  ctaLabel?: string | null;
+  ctaUrl?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  isSponsored: boolean;
+  sponsorName?: string | null;
+  amountCharged?: string | null;
+  createdAt: string;
+}
+
+export interface VehicleBoost {
+  id: string;
+  vehicleId: string;
+  grantedById?: string | null;
+  startsAt: string;
+  endsAt: string;
+  amountCharged: string;
+  createdAt: string;
+}
+
+export interface AdSlot {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  imageUrl: string;
+  ctaLabel?: string | null;
+  ctaUrl?: string | null;
+  sponsorName?: string | null;
+  amountCharged?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type AffiliateCategory = "INSURANCE" | "ROADSIDE_ASSISTANCE" | "FUEL" | "OTHER";
+
+export interface AffiliatePartner {
+  id: string;
+  name: string;
+  category: AffiliateCategory;
+  tagline?: string | null;
+  ctaLabel?: string | null;
+  referralUrl: string;
+  logoUrl?: string | null;
+  sortOrder: number;
+  isActive: boolean;
   createdAt: string;
 }
 

@@ -1,67 +1,71 @@
 "use client";
 
 import { Link } from "@vrm/ui";
-import { MessageCircleQuestion, Mail, ArrowRight } from "lucide-react";
+import { MessageCircleQuestion, Mail, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button, Card, RevealOnScroll } from "@vrm/ui";
 import { Seo } from "@/components/Seo";
 import { PageHero } from "@/components/PageHero";
 
 export function SupportPage() {
   return (
-    <div>
+    <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
       <Seo title="Support" description="Get help with your RentWheels booking or account." />
 
       <PageHero
-        eyebrow="We're here to help"
-        title="Support"
-        description="We're here to help with bookings, payments, partner questions, and anything in between."
+        eyebrow="Customer Support"
+        title="We're Here to Help"
+        description="We're available 24/7 to assist with your bookings, payments, rental partner inquiries, and account settings."
         size="sm"
       />
 
-      <section className="mx-auto max-w-4xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <RevealOnScroll>
-            <Card hoverable className="h-full p-6">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-secondary-50 text-secondary dark:bg-secondary-500/15">
-                <MessageCircleQuestion size={20} />
+            <Card hoverable className="flex flex-col justify-between h-full p-8 shadow-soft border border-border transition-all duration-300 hover:-translate-y-1">
+              <div>
+                <div className="flex size-12 items-center justify-center rounded-xl bg-secondary-50 text-secondary dark:bg-secondary-500/15 dark:text-accent-300">
+                  <MessageCircleQuestion size={22} />
+                </div>
+                <h3 className="mt-5 font-heading text-lg font-bold text-primary dark:text-white">Browse Help & FAQ</h3>
+                <p className="mt-2 text-xs leading-relaxed text-primary-400">
+                  Find fast answers to common questions regarding driving requirements, deposit refunds, and cancellation rules.
+                </p>
               </div>
-              <p className="mt-4 font-heading text-base font-semibold">Browse the FAQ</p>
-              <p className="mt-1.5 text-sm text-primary-400">
-                Most common questions about bookings, payments, and partnerships are answered there.
-              </p>
-              <Link to="/faq" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-link hover:underline">
-                View FAQ <ArrowRight size={14} />
+              <Link to="/faq" className="mt-6 inline-flex items-center gap-1 text-xs font-bold text-secondary hover:underline dark:text-accent-300">
+                Explore FAQ Articles <ArrowRight size={14} />
               </Link>
             </Card>
           </RevealOnScroll>
 
           <RevealOnScroll delay={0.08}>
-            <Card hoverable className="h-full p-6">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-secondary-50 text-secondary dark:bg-secondary-500/15">
-                <Mail size={20} />
+            <Card hoverable className="flex flex-col justify-between h-full p-8 shadow-soft border border-border transition-all duration-300 hover:-translate-y-1">
+              <div>
+                <div className="flex size-12 items-center justify-center rounded-xl bg-secondary-50 text-secondary dark:bg-secondary-500/15 dark:text-accent-300">
+                  <Mail size={22} />
+                </div>
+                <h3 className="mt-5 font-heading text-lg font-bold text-primary dark:text-white">Contact Support Team</h3>
+                <p className="mt-2 text-xs leading-relaxed text-primary-400">
+                  Send us a direct message and our dedicated support team will respond by email within 24 hours.
+                </p>
               </div>
-              <p className="mt-4 font-heading text-base font-semibold">Contact our team</p>
-              <p className="mt-1.5 text-sm text-primary-400">
-                Send us a message and we'll respond by email — usually within one business day.
-              </p>
-              <Link to="/contact" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-link hover:underline">
-                Go to Contact <ArrowRight size={14} />
+              <Link to="/contact" className="mt-6 inline-flex items-center gap-1 text-xs font-bold text-secondary hover:underline dark:text-accent-300">
+                Go to Contact Form <ArrowRight size={14} />
               </Link>
             </Card>
           </RevealOnScroll>
         </div>
 
         <RevealOnScroll delay={0.16}>
-          <Card className="mt-6 flex flex-col items-center gap-4 p-8 text-center sm:flex-row sm:justify-between sm:text-left">
+          <Card className="mt-8 flex flex-col items-center gap-6 p-8 text-center sm:flex-row sm:justify-between sm:text-left shadow-card border border-border">
             <div>
-              <p className="font-heading text-base font-semibold">Already have a booking?</p>
-              <p className="mt-1 text-sm text-primary-400">
-                Log in to your account to raise a support ticket and track it alongside your bookings.
+              <h3 className="font-heading text-lg font-bold text-primary dark:text-white">Already Have an Active Booking?</h3>
+              <p className="mt-1 text-xs text-primary-400 leading-relaxed">
+                Log in to your customer account to raise a support ticket and track live trip updates.
               </p>
             </div>
             <Link to="/account/support">
-              <Button>
-                Go to My Support Tickets <ArrowRight size={16} />
+              <Button size="sm" className="gap-2 text-xs font-bold dark:bg-white dark:text-primary dark:hover:bg-primary-50">
+                My Support Tickets <ArrowRight size={15} />
               </Button>
             </Link>
           </Card>

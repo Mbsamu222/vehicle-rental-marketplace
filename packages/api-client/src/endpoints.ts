@@ -1,8 +1,10 @@
 import { http } from "./http";
 import { unwrap, unwrapList } from "./client";
 import type {
+  AdSlot,
+  AffiliateCategory,
+  AffiliatePartner,
   AuditLog,
-  AuthResult,
   BankDetail,
   Booking,
   BookingStatus,
@@ -32,41 +34,35 @@ import type {
   VehicleImage,
   Wallet,
   BlogPost,
+  HeroBannerSlide,
   CouponType,
   FuelType,
+  MonetizationFeature,
+  MonetizationFeatureKey,
+  MonetizationStatus,
+  PartnerAnalytics,
+  PartnerSubscription,
   PaymentProvider,
+  SubscriptionPlan,
   UserType,
   VehicleTransmission,
 } from "./types";
 
 // ─── Auth ───
 
-export interface RegisterInput {
-  firstName: string;
-  lastName: string;
-  email: string;
+export interface SyncInput {
+  firstName?: string;
+  lastName?: string;
   phone?: string;
-  password: string;
-  userType: "CUSTOMER" | "RENTAL_PARTNER";
+  userType?: "CUSTOMER" | "RENTAL_PARTNER";
   referralCode?: string;
 }
 
 export const authApi = {
-  register: (input: RegisterInput) => unwrap<AuthResult>(http.post("/auth/register", input)),
-  login: (email: string, password: string) => unwrap<AuthResult>(http.post("/auth/login", { email, password })),
-  refresh: (refreshToken: string) => unwrap<AuthResult>(http.post("/auth/refresh", { refreshToken })),
-  logout: (refreshToken: string) => unwrap<{ message: string }>(http.post("/auth/logout", { refreshToken })),
+  sync: (input: SyncInput) => unwrap<User>(http.post("/auth/sync", input)),
   me: () => unwrap<User>(http.get("/auth/me")),
-  requestOtp: (purpose: "EMAIL_VERIFICATION" | "PHONE_VERIFICATION") =>
-    unwrap<{ message: string; code?: string }>(http.post("/auth/otp/request", { purpose })),
-  verifyOtp: (otp: string, purpose: "EMAIL_VERIFICATION" | "PHONE_VERIFICATION") =>
-    unwrap<User>(http.post("/auth/otp/verify", { otp, purpose })),
-  forgotPassword: (email: string) =>
-    unwrap<{ message: string; code?: string }>(http.post("/auth/forgot-password", { email })),
-  resetPassword: (email: string, otp: string, newPassword: string) =>
-    unwrap<{ message: string }>(http.post("/auth/reset-password", { email, otp, newPassword })),
-  changePassword: (currentPassword: string, newPassword: string) =>
-    unwrap<{ message: string }>(http.post("/auth/change-password", { currentPassword, newPassword })),
+  lookup: (phone: string) => unwrap<{ exists: boolean }>(http.post("/auth/lookup", { phone })),
+  discardUnlinked: () => unwrap<{ message: string }>(http.post("/auth/discard-unlinked")),
 };
 
 // ─── Users ───
@@ -105,19 +101,71 @@ export const usersApi = {
 
 // ─── Catalog ───
 
+export interface UpdateCountryInput {
+  name?: string;
+  code?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateCityInput {
+  name?: string;
+  countryId?: string;
+  isPopular?: boolean;
+  imageUrl?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateCategoryInput {
+  name?: string;
+  slug?: string;
+  iconUrl?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateBrandInput {
+  name?: string;
+  logoUrl?: string;
+  isActive?: boolean;
+}
+
+// ─── Monetization status (public) ───
+// Just the enabled/disabled flag per feature, no rates/tiers — safe for
+// anonymous visitors so the frontend can hide boosted/sponsored/fee-related UI
+// the moment a toggle is off, not just show empty/zero data for it.
+export const monetizationApi = {
+  status: () => unwrap<MonetizationStatus>(http.get("/monetization/status")),
+};
+
 export const catalogApi = {
   countries: () => unwrap<Country[]>(http.get("/catalog/countries")),
   cities: (params?: { countryId?: string; popular?: boolean }) =>
     unwrap<City[]>(http.get("/catalog/cities", { params })),
   categories: () => unwrap<VehicleCategory[]>(http.get("/catalog/vehicle-categories")),
   brands: () => unwrap<VehicleBrand[]>(http.get("/catalog/vehicle-brands")),
+  adminCountries: () => unwrap<Country[]>(http.get("/catalog/admin/countries")),
+  adminCities: () => unwrap<City[]>(http.get("/catalog/admin/cities")),
+  adminCategories: () => unwrap<VehicleCategory[]>(http.get("/catalog/admin/vehicle-categories")),
+  adminBrands: () => unwrap<VehicleBrand[]>(http.get("/catalog/admin/vehicle-brands")),
   createCountry: (input: { name: string; code: string }) => unwrap<Country>(http.post("/catalog/countries", input)),
+  updateCountry: (id: string, input: UpdateCountryInput) =>
+    unwrap<Country>(http.patch(`/catalog/countries/${id}`, input)),
+  removeCountry: (id: string) => unwrap<unknown>(http.delete(`/catalog/countries/${id}`)),
   createCity: (input: { name: string; countryId: string; isPopular?: boolean; imageUrl?: string }) =>
     unwrap<City>(http.post("/catalog/cities", input)),
+  updateCity: (id: string, input: UpdateCityInput) => unwrap<City>(http.patch(`/catalog/cities/${id}`, input)),
+  removeCity: (id: string) => unwrap<unknown>(http.delete(`/catalog/cities/${id}`)),
   createCategory: (input: { name: string; slug: string; iconUrl?: string }) =>
     unwrap<VehicleCategory>(http.post("/catalog/vehicle-categories", input)),
+  updateCategory: (id: string, input: UpdateCategoryInput) =>
+    unwrap<VehicleCategory>(http.patch(`/catalog/vehicle-categories/${id}`, input)),
+  removeCategory: (id: string) => unwrap<unknown>(http.delete(`/catalog/vehicle-categories/${id}`)),
   createBrand: (input: { name: string; logoUrl?: string }) =>
     unwrap<VehicleBrand>(http.post("/catalog/vehicle-brands", input)),
+  updateBrand: (id: string, input: UpdateBrandInput) =>
+    unwrap<VehicleBrand>(http.patch(`/catalog/vehicle-brands/${id}`, input)),
+  removeBrand: (id: string) => unwrap<unknown>(http.delete(`/catalog/vehicle-brands/${id}`)),
+  adSlots: () => unwrap<AdSlot[]>(http.get("/catalog/ad-slots")),
+  affiliatePartners: () => unwrap<AffiliatePartner[]>(http.get("/catalog/affiliate-partners")),
 };
 
 // ─── Vehicles ───
@@ -176,6 +224,8 @@ export const vehiclesApi = {
   listPendingApproval: () => unwrapList<Vehicle>(http.get("/vehicles/admin/pending-approval")),
   review: (id: string, status: "APPROVED" | "REJECTED", rejectionReason?: string) =>
     unwrap<Vehicle>(http.patch(`/vehicles/${id}/review`, { status, rejectionReason })),
+  boost: (id: string, days: number, amountCharged: number) =>
+    unwrap<Vehicle>(http.post(`/vehicles/${id}/boost`, { days, amountCharged })),
 };
 
 // ─── Rental Partners ───
@@ -216,6 +266,7 @@ export const rentalPartnersApi = {
     ifscCode: string;
     bankName: string;
     branch?: string;
+    upiId?: string;
   }) => unwrap<BankDetail>(http.put("/rental-partners/me/bank-details", input)),
   listPartners: (params?: { status?: string; page?: number; limit?: number }) =>
     unwrapList<RentalPartner>(http.get("/rental-partners", { params })),
@@ -224,6 +275,32 @@ export const rentalPartnersApi = {
     unwrap<RentalPartner>(http.patch(`/rental-partners/${id}/verification-status`, { status })),
   reviewDocument: (documentId: string, status: DocumentStatus, rejectionReason?: string) =>
     unwrap<BusinessDocument>(http.patch(`/rental-partners/documents/${documentId}/review`, { status, rejectionReason })),
+  getAnalytics: () => unwrap<PartnerAnalytics>(http.get("/rental-partners/me/analytics")),
+};
+
+// ─── Subscriptions ───
+
+export interface CreateSubscriptionPlanInput {
+  name: string;
+  description?: string;
+  price: number;
+  durationDays: number;
+  maxVehicles?: number;
+  features?: Record<string, unknown>;
+  isActive?: boolean;
+}
+
+export const subscriptionsApi = {
+  listPlans: () => unwrap<SubscriptionPlan[]>(http.get("/subscriptions/plans")),
+  adminListPlans: () => unwrap<SubscriptionPlan[]>(http.get("/subscriptions/plans/manage")),
+  createPlan: (input: CreateSubscriptionPlanInput) => unwrap<SubscriptionPlan>(http.post("/subscriptions/plans", input)),
+  updatePlan: (id: string, input: Partial<CreateSubscriptionPlanInput>) =>
+    unwrap<SubscriptionPlan>(http.patch(`/subscriptions/plans/${id}`, input)),
+  deletePlan: (id: string) => unwrap<unknown>(http.delete(`/subscriptions/plans/${id}`)),
+  requestSubscription: (planId: string) => unwrap<PartnerSubscription>(http.post("/subscriptions/mine", { planId })),
+  getMySubscription: () => unwrap<PartnerSubscription | null>(http.get("/subscriptions/mine")),
+  listPending: () => unwrap<PartnerSubscription[]>(http.get("/subscriptions/pending")),
+  confirm: (id: string) => unwrap<PartnerSubscription>(http.patch(`/subscriptions/${id}/confirm`)),
 };
 
 // ─── Bookings ───
@@ -236,17 +313,21 @@ export interface CreateBookingInput {
   pickupLocation: string;
   returnLocation: string;
   couponCode?: string;
+  extraDriverCount?: number;
+  isYoungDriver?: boolean;
 }
 
 export const bookingsApi = {
   create: (input: CreateBookingInput) => unwrap<Booking>(http.post("/bookings", input)),
   listMine: (params?: { status?: BookingStatus; page?: number; limit?: number }) =>
     unwrapList<Booking>(http.get("/bookings/mine", { params })),
+  cancellationPreview: (id: string) =>
+    unwrap<{ feeAmount: number; refundAmount: number }>(http.get(`/bookings/${id}/cancellation-preview`)),
   cancel: (id: string, reason?: string) => unwrap<Booking>(http.post(`/bookings/${id}/cancel`, { reason })),
   listPartnerBookings: (params?: { status?: BookingStatus; page?: number; limit?: number }) =>
     unwrapList<Booking>(http.get("/bookings/partner/mine", { params })),
-  updateStatus: (id: string, status: BookingStatus, note?: string) =>
-    unwrap<Booking>(http.patch(`/bookings/${id}/status`, { status, note })),
+  updateStatus: (id: string, status: BookingStatus, note?: string, actualReturnAt?: string) =>
+    unwrap<Booking>(http.patch(`/bookings/${id}/status`, { status, note, actualReturnAt })),
   getById: (id: string) => unwrap<Booking>(http.get(`/bookings/${id}`)),
 };
 
@@ -264,10 +345,18 @@ export const paymentsApi = {
     unwrap<Payment>(http.post("/payments/verify", { paymentId, providerRefId, providerSignature })),
   listMine: (params?: { page?: number; limit?: number }) => unwrapList<Payment>(http.get("/payments/mine", { params })),
   wallet: () => unwrap<Wallet>(http.get("/payments/wallet")),
-  listTransactions: (params?: { type?: string; rentalPartnerId?: string; page?: number; limit?: number }) =>
+  listTransactions: (params?: { type?: string; rentalPartnerId?: string; customerId?: string; page?: number; limit?: number }) =>
     unwrapList<Transaction>(http.get("/payments/transactions", { params })),
   refund: (id: string, amount?: number, reason?: string) =>
     unwrap<Payment>(http.post(`/payments/${id}/refund`, { amount, reason })),
+};
+
+// ─── Payouts ───
+
+export const payoutsApi = {
+  create: (rentalPartnerId: string) => unwrap<Transaction>(http.post("/payouts", { rentalPartnerId })),
+  list: (params?: { page?: number; limit?: number }) => unwrapList<Transaction>(http.get("/payouts", { params })),
+  listMine: (params?: { page?: number; limit?: number }) => unwrapList<Transaction>(http.get("/payouts/mine", { params })),
 };
 
 // ─── Reviews ───
@@ -341,8 +430,47 @@ export interface AdminDashboard {
   pendingVehicleApprovals: number;
   totalBookings: number;
   activeBookings: number;
+  /** GMV — what customers paid on completed bookings, tax and refundable deposit included. Not platform earnings. */
+  totalBookingValue: string | number;
+  /** Real platform earnings: recorded commission + payout fees. Zero until those toggles are enabled. */
   totalRevenue: string | number;
   pendingSupportTickets: number;
+}
+
+export interface CreateHeroBannerSlideInput {
+  title: string;
+  subtitle?: string;
+  imageUrl: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  isSponsored?: boolean;
+  sponsorName?: string;
+  amountCharged?: number;
+}
+
+export interface CreateAdSlotInput {
+  title: string;
+  subtitle?: string;
+  imageUrl: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  sponsorName?: string;
+  amountCharged?: number;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface CreateAffiliatePartnerInput {
+  name: string;
+  category: AffiliateCategory;
+  tagline?: string;
+  ctaLabel?: string;
+  referralUrl: string;
+  logoUrl?: string;
+  sortOrder?: number;
+  isActive?: boolean;
 }
 
 export const adminApi = {
@@ -358,6 +486,7 @@ export const adminApi = {
     unwrap<unknown>(http.post(`/admin/users/${userId}/role`, { roleId })),
   listUsers: (params?: { userType?: UserType; status?: string; page?: number; limit?: number }) =>
     unwrapList<User>(http.get("/admin/users", { params })),
+  getUserById: (id: string) => unwrap<User>(http.get(`/admin/users/${id}`)),
   updateUserStatus: (id: string, status: "ACTIVE" | "SUSPENDED" | "BANNED") =>
     unwrap<User>(http.patch(`/admin/users/${id}/status`, { status })),
   listAuditLogs: (params?: { entityType?: string; page?: number; limit?: number }) =>
@@ -376,6 +505,13 @@ export const adminApi = {
     coverImageUrl?: string;
     status: "DRAFT" | "PUBLISHED";
   }) => unwrap<BlogPost>(http.put("/admin/blog", input)),
+  listHeroBanners: () => unwrap<HeroBannerSlide[]>(http.get("/admin/hero-banners")),
+  adminListHeroBanners: () => unwrap<HeroBannerSlide[]>(http.get("/admin/hero-banners/manage")),
+  createHeroBanner: (input: CreateHeroBannerSlideInput) =>
+    unwrap<HeroBannerSlide>(http.post("/admin/hero-banners", input)),
+  updateHeroBanner: (id: string, input: Partial<CreateHeroBannerSlideInput>) =>
+    unwrap<HeroBannerSlide>(http.patch(`/admin/hero-banners/${id}`, input)),
+  deleteHeroBanner: (id: string) => unwrap<unknown>(http.delete(`/admin/hero-banners/${id}`)),
   getSetting: (key: string) => unwrap<{ key: string; value: unknown }>(http.get(`/admin/settings/${key}`)),
   upsertSetting: (key: string, value: unknown) =>
     unwrap<{ key: string; value: unknown }>(http.put(`/admin/settings/${key}`, { value })),
@@ -383,4 +519,20 @@ export const adminApi = {
     unwrapList<DrivingLicense & { user?: User }>(http.get("/admin/driving-licenses", { params })),
   reviewDrivingLicense: (id: string, status: "VERIFIED" | "REJECTED", rejectionReason?: string) =>
     unwrap<DrivingLicense>(http.patch(`/admin/driving-licenses/${id}/review`, { status, rejectionReason })),
+  listMonetizationFeatures: () => unwrap<MonetizationFeature[]>(http.get("/admin/monetization/features")),
+  updateMonetizationFeature: (
+    key: MonetizationFeatureKey,
+    input: { isEnabled?: boolean; config?: Record<string, unknown> },
+  ) => unwrap<MonetizationFeature>(http.patch(`/admin/monetization/features/${key}`, input)),
+  adminListAdSlots: () => unwrap<AdSlot[]>(http.get("/admin/ad-slots/manage")),
+  createAdSlot: (input: CreateAdSlotInput) => unwrap<AdSlot>(http.post("/admin/ad-slots", input)),
+  updateAdSlot: (id: string, input: Partial<CreateAdSlotInput>) =>
+    unwrap<AdSlot>(http.patch(`/admin/ad-slots/${id}`, input)),
+  deleteAdSlot: (id: string) => unwrap<unknown>(http.delete(`/admin/ad-slots/${id}`)),
+  adminListAffiliatePartners: () => unwrap<AffiliatePartner[]>(http.get("/admin/affiliate-partners/manage")),
+  createAffiliatePartner: (input: CreateAffiliatePartnerInput) =>
+    unwrap<AffiliatePartner>(http.post("/admin/affiliate-partners", input)),
+  updateAffiliatePartner: (id: string, input: Partial<CreateAffiliatePartnerInput>) =>
+    unwrap<AffiliatePartner>(http.patch(`/admin/affiliate-partners/${id}`, input)),
+  deleteAffiliatePartner: (id: string) => unwrap<unknown>(http.delete(`/admin/affiliate-partners/${id}`)),
 };

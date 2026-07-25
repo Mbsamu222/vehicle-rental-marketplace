@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { RefreshCcw } from "lucide-react";
-import { useTransactions, useRefundPayment } from "@vrm/api-client";
+import { RefreshCcw, Wallet } from "lucide-react";
+import { useTransactions, useRefundPayment, useCreatePayout } from "@vrm/api-client";
 import { Badge, Card, DataTable, Modal, PageTransition, Select, Button, Input, useToast } from "@vrm/ui";
 
 /**
@@ -15,7 +15,7 @@ import { Badge, Card, DataTable, Modal, PageTransition, Select, Button, Input, u
  */
 interface TransactionRow {
   id: string;
-  type: "BOOKING_PAYMENT" | "REFUND" | "PAYOUT" | "WALLET_TOPUP" | "WALLET_DEBIT" | "COMMISSION";
+  type: "BOOKING_PAYMENT" | "REFUND" | "PAYOUT" | "WALLET_TOPUP" | "WALLET_DEBIT" | "COMMISSION" | "LATE_RETURN_FEE";
   status: "PENDING" | "SUCCESS" | "FAILED";
   amount: string;
   paymentId?: string | null;
@@ -32,6 +32,7 @@ const TYPE_OPTIONS = [
   { value: "WALLET_TOPUP", label: "Wallet top-up" },
   { value: "WALLET_DEBIT", label: "Wallet debit" },
   { value: "COMMISSION", label: "Commission" },
+  { value: "LATE_RETURN_FEE", label: "Late-return fee (outstanding)" },
 ];
 
 const statusTone: Record<TransactionRow["status"], "warning" | "success" | "danger"> = {
@@ -46,9 +47,12 @@ export function TransactionsPage() {
   const rows = (data?.data ?? []) as unknown as TransactionRow[];
 
   const refundPayment = useRefundPayment();
+  const createPayout = useCreatePayout();
   const toast = useToast();
   const [refundTarget, setRefundTarget] = useState<TransactionRow | null>(null);
+  const [payoutModalOpen, setPayoutModalOpen] = useState(false);
   const { register, handleSubmit, reset } = useForm<{ amount?: string; reason?: string }>();
+  const payoutForm = useForm<{ rentalPartnerId: string }>();
 
   const onRefund = handleSubmit(async (values) => {
     if (!refundTarget?.paymentId) return;
@@ -66,13 +70,29 @@ export function TransactionsPage() {
     }
   });
 
+  const onCreatePayout = payoutForm.handleSubmit(async (values) => {
+    try {
+      const payout = await createPayout.mutateAsync(values.rentalPartnerId);
+      toast.success(`Payout created — ₹${payout.amount}`);
+      setPayoutModalOpen(false);
+      payoutForm.reset();
+    } catch (err) {
+      toast.error("Could not create payout", err instanceof Error ? err.message : undefined);
+    }
+  });
+
   return (
     <PageTransition>
-      <div className="mb-6">
-        <h1 className="font-heading text-2xl font-bold">Transactions</h1>
-        <p className="text-sm text-primary-400">
-          Every ledger movement across bookings, payouts, wallet activity, and commissions.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Transactions</h1>
+          <p className="text-sm text-primary-400">
+            Every ledger movement across bookings, payouts, wallet activity, and commissions.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => setPayoutModalOpen(true)}>
+          <Wallet size={16} /> Trigger payout
+        </Button>
       </div>
 
       <div className="mb-4 max-w-xs">
@@ -117,6 +137,24 @@ export function TransactionsPage() {
           <Input label="Reason (optional)" {...register("reason")} />
           <Button type="submit" isLoading={refundPayment.isPending} fullWidth>
             Issue refund
+          </Button>
+        </form>
+      </Modal>
+
+      <Modal open={payoutModalOpen} onClose={() => setPayoutModalOpen(false)} title="Trigger partner payout">
+        <form onSubmit={onCreatePayout} className="flex flex-col gap-4">
+          <p className="text-sm text-primary-400">
+            Sums every completed booking not yet paid out for this partner, nets commission (and the payout fee if
+            enabled), and records one PAYOUT transaction.
+          </p>
+          <Input
+            label="Rental partner ID"
+            required
+            error={payoutForm.formState.errors.rentalPartnerId?.message}
+            {...payoutForm.register("rentalPartnerId", { required: "Required" })}
+          />
+          <Button type="submit" isLoading={createPayout.isPending} fullWidth>
+            Create payout
           </Button>
         </form>
       </Modal>

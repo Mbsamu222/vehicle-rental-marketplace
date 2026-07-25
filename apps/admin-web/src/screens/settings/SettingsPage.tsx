@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings as SettingsIcon } from "lucide-react";
-import { adminApi, authApi } from "@vrm/api-client";
+import { adminApi, changePassword } from "@vrm/api-client";
 import { Button, Card, Input, PageTransition, Textarea, useToast } from "@vrm/ui";
 
 const DEFAULT_KEY = "platform.commission_default";
@@ -53,7 +53,7 @@ export function SettingsPage() {
   const onChangePassword = async () => {
     setChangingPassword(true);
     try {
-      await authApi.changePassword(currentPassword, newPassword);
+      await changePassword(currentPassword, newPassword);
       toast.success("Password changed");
       setCurrentPassword("");
       setNewPassword("");

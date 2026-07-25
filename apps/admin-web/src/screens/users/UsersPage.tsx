@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Ban, CheckCircle2, ShieldAlert, Users as UsersIcon } from "lucide-react";
 import { useAdminUsers, useUpdateUserStatus } from "@vrm/api-client";
 import type { AccountStatus, UserType } from "@vrm/api-client";
-import { Badge, Card, DataTable, Dropdown, PageTransition, Select, Tabs, useToast } from "@vrm/ui";
+import { Badge, Button, Card, DataTable, Dropdown, Link, PageTransition, Select, Tabs, useToast } from "@vrm/ui";
 
 const USER_TYPE_TABS: { value: string; label: string }[] = [
   { value: "CUSTOMER", label: "Customers" },
@@ -73,12 +73,18 @@ export function UsersPage() {
             columns={[
               {
                 header: "Name",
-                cell: (u) => (
-                  <div>
-                    <p className="font-semibold">{u.firstName} {u.lastName}</p>
-                    <p className="text-xs text-primary-400">{u.email}</p>
-                  </div>
-                ),
+                cell: (u) =>
+                  userType === "CUSTOMER" ? (
+                    <Link to={`/users/${u.id}`} className="hover:underline">
+                      <p className="font-semibold">{u.firstName} {u.lastName}</p>
+                      <p className="text-xs text-primary-400">{u.email}</p>
+                    </Link>
+                  ) : (
+                    <div>
+                      <p className="font-semibold">{u.firstName} {u.lastName}</p>
+                      <p className="text-xs text-primary-400">{u.email}</p>
+                    </div>
+                  ),
               },
               { header: "Phone", cell: (u) => u.phone ?? "—" },
               {
@@ -91,9 +97,9 @@ export function UsersPage() {
                 cell: (u) => (
                   <Dropdown
                     trigger={
-                      <button className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-primary-50 dark:border-dark-border dark:hover:bg-white/5">
+                      <Button variant="outline" size="sm" className="text-xs font-medium">
                         Change status
-                      </button>
+                      </Button>
                     }
                     items={[
                       {

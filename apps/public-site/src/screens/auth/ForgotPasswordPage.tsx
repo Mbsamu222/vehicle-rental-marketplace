@@ -3,16 +3,15 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useNavigate } from "@vrm/ui";
+import { Link } from "@vrm/ui";
 import { KeyRound } from "lucide-react";
 import { Button, Input, useToast, AuthLayout } from "@vrm/ui";
-import { authApi } from "@vrm/api-client";
+import { sendResetEmail } from "@vrm/api-client";
 
 const schema = z.object({ email: z.string().email("Enter a valid email") });
 type FormValues = z.infer<typeof schema>;
 
 export function ForgotPasswordPage() {
-  const navigate = useNavigate();
   const toast = useToast();
   const {
     register,
@@ -22,9 +21,9 @@ export function ForgotPasswordPage() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await authApi.forgotPassword(values.email);
-      toast.success("Check your email", "If an account exists, a reset code has been sent.");
-      navigate(`/reset-password?email=${encodeURIComponent(values.email)}`);
+      const continueUrl = `${window.location.origin}/reset-password`;
+      await sendResetEmail(values.email, continueUrl);
+      toast.success("Check your email", "If an account exists, a reset link has been sent.");
     } catch (err) {
       toast.error("Something went wrong", err instanceof Error ? err.message : undefined);
     }
@@ -33,7 +32,7 @@ export function ForgotPasswordPage() {
   return (
     <AuthLayout
       title="Forgot your password?"
-      subtitle="Enter your email and we'll send you a reset code."
+      subtitle="Enter your email and we'll send you a reset link."
       brandTagline="Get back in seconds."
       brandTitle={
         <div className="flex items-center gap-2 font-heading text-xl font-bold">
@@ -47,7 +46,7 @@ export function ForgotPasswordPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <Input label="Email" type="email" error={errors.email?.message} {...register("email")} />
         <Button type="submit" isLoading={isSubmitting} fullWidth>
-          Send reset code
+          Send reset link
         </Button>
       </form>
       <p className="mt-6 text-center text-sm text-primary-400">

@@ -1,7 +1,7 @@
 "use client";
 
 import { Link } from "@vrm/ui";
-import { RevealOnScroll } from "@vrm/ui";
+import { RevealOnScroll, Card } from "@vrm/ui";
 import { FaqAccordion } from "@/components/FaqAccordion";
 import { Seo } from "@/components/Seo";
 import { PageHero } from "@/components/PageHero";
@@ -9,27 +9,31 @@ import { faqItems } from "@/data/marketingContent";
 
 export function FaqPage() {
   return (
-    <div>
+    <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
       <Seo title="Frequently Asked Questions" description="Answers to common questions about renting on RentWheels." />
 
       <PageHero
-        eyebrow="Support"
+        eyebrow="Help & FAQ"
         title="Frequently Asked Questions"
         size="sm"
-        description="Can't find what you're looking for? Reach out on our Contact page."
+        description="Everything you need to know about vehicle bookings, security deposits, driving requirements, and partner onboarding."
       />
 
-      <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
         <RevealOnScroll>
-          <FaqAccordion items={faqItems} />
+          <Card className="p-6 sm:p-8 shadow-soft border border-border">
+            <FaqAccordion items={faqItems} />
+          </Card>
         </RevealOnScroll>
-        <p className="mt-8 text-center text-sm text-primary-400">
-          Still stuck?{" "}
-          <Link to="/contact" className="font-semibold text-secondary hover:underline">
-            Contact our team
-          </Link>
-          .
-        </p>
+
+        <div className="mt-10 text-center text-sm text-primary-400">
+          <p>
+            Still have questions?{" "}
+            <Link to="/contact" className="font-bold text-secondary hover:underline dark:text-accent-300">
+              Contact our 24/7 Support Team →
+            </Link>
+          </p>
+        </div>
       </section>
     </div>
   );

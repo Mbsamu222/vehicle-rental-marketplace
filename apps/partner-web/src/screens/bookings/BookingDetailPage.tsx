@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { useBooking, useUpdateBookingStatus } from "@vrm/api-client";
 import type { BookingStatus } from "@vrm/api-client";
-import { Badge, Button, Card, PageSpinner, PageTransition, BookingStatusTimeline, Modal, Textarea, useToast } from "@vrm/ui";
+import { Badge, Button, Card, PageSpinner, PageTransition, BookingStatusTimeline, Modal, Textarea, Input, useToast } from "@vrm/ui";
 
 // Mirrors ALLOWED_TRANSITIONS in backend/src/modules/bookings/bookings.service.ts, restricted to
 // the transitions the `RENTAL_PARTNER` role is permitted to drive via PATCH /bookings/:id/status.
@@ -31,16 +31,18 @@ export function BookingDetailPage() {
   const toast = useToast();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [actualReturnAt, setActualReturnAt] = useState("");
   const [pendingTransition, setPendingTransition] = useState<BookingStatus | null>(null);
 
   if (isLoading || !booking) return <PageSpinner />;
 
   const transitions = PARTNER_TRANSITIONS[booking.status] ?? [];
 
-  const runTransition = async (status: BookingStatus, note?: string) => {
+  const runTransition = async (status: BookingStatus, note?: string, actualReturnAtValue?: string) => {
     setPendingTransition(status);
     try {
-      await updateStatus.mutateAsync({ id: booking.id, status, note });
+      await updateStatus.mutateAsync({ id: booking.id, status, note, actualReturnAt: actualReturnAtValue });
       toast.success("Booking updated", `Status changed to ${status.replace(/_/g, " ").toLowerCase()}.`);
     } catch (err) {
       toast.error("Could not update booking", err instanceof Error ? err.message : undefined);
@@ -54,6 +56,10 @@ export function BookingDetailPage() {
       setRejectOpen(true);
       return;
     }
+    if (status === "COMPLETED") {
+      setCompleteOpen(true);
+      return;
+    }
     runTransition(status);
   };
 
@@ -61,6 +67,12 @@ export function BookingDetailPage() {
     await runTransition("REJECTED", rejectNote || undefined);
     setRejectOpen(false);
     setRejectNote("");
+  };
+
+  const onConfirmComplete = async () => {
+    await runTransition("COMPLETED", undefined, actualReturnAt ? new Date(actualReturnAt).toISOString() : undefined);
+    setCompleteOpen(false);
+    setActualReturnAt("");
   };
 
   return (
@@ -148,6 +160,24 @@ export function BookingDetailPage() {
               <span className="text-primary-400">Tax</span>
               <span>₹{booking.taxAmount}</span>
             </div>
+            {Number(booking.serviceFeeAmount) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-primary-400">Service fee</span>
+                <span>₹{booking.serviceFeeAmount}</span>
+              </div>
+            )}
+            {Number(booking.extraDriverFeeAmount) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-primary-400">Extra driver fee ({booking.extraDriverCount})</span>
+                <span>₹{booking.extraDriverFeeAmount}</span>
+              </div>
+            )}
+            {Number(booking.youngDriverFeeAmount) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-primary-400">Young driver fee</span>
+                <span>₹{booking.youngDriverFeeAmount}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-primary-400">Security deposit</span>
               <span>₹{booking.securityDeposit}</span>
@@ -156,6 +186,18 @@ export function BookingDetailPage() {
               <span>Total</span>
               <span>₹{booking.totalAmount}</span>
             </div>
+            {Number(booking.cancellationFeeAmount) > 0 && (
+              <div className="mt-2 flex justify-between border-t border-border pt-3 text-danger dark:border-dark-border">
+                <span>Cancellation fee</span>
+                <span>₹{booking.cancellationFeeAmount}</span>
+              </div>
+            )}
+            {Number(booking.lateReturnFeeAmount) > 0 && (
+              <div className="mt-2 flex justify-between border-t border-border pt-3 text-danger dark:border-dark-border">
+                <span>Late-return fee (outstanding — follow up with customer)</span>
+                <span>₹{booking.lateReturnFeeAmount}</span>
+              </div>
+            )}
           </div>
           {booking.payments?.[0] && (
             <Badge tone={booking.payments[0].status === "PAID" ? "success" : "warning"} className="mt-4">
@@ -175,6 +217,21 @@ export function BookingDetailPage() {
           />
           <Button variant="danger" fullWidth onClick={onConfirmReject} isLoading={updateStatus.isPending}>
             Confirm rejection
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal open={completeOpen} onClose={() => setCompleteOpen(false)} title="Mark booking completed">
+        <div className="flex flex-col gap-4">
+          <Input
+            label="Actual return time (optional)"
+            type="datetime-local"
+            value={actualReturnAt}
+            onChange={(e) => setActualReturnAt(e.target.value)}
+            hint="Leave blank to use the current time. If a late-return fee is enabled and this is past the scheduled return time, it's recorded for follow-up — never auto-charged."
+          />
+          <Button fullWidth onClick={onConfirmComplete} isLoading={updateStatus.isPending}>
+            Confirm completion
           </Button>
         </div>
       </Modal>

@@ -11,7 +11,7 @@ import {
   useUploadPartnerDocument,
   useSetBankDetails,
   useCities,
-  authApi,
+  changePassword,
   type DocumentType,
 } from "@vrm/api-client";
 import {
@@ -45,6 +45,7 @@ const bankSchema = z.object({
   ifscCode: z.string().min(4).max(20),
   bankName: z.string().min(1, "Required"),
   branch: z.string().optional().or(z.literal("")),
+  upiId: z.string().optional().or(z.literal("")),
 });
 type BankFormValues = z.infer<typeof bankSchema>;
 
@@ -112,6 +113,7 @@ export function BusinessProfilePage() {
           ifscCode: partner.bankDetails.ifscCode,
           bankName: partner.bankDetails.bankName,
           branch: partner.bankDetails.branch ?? "",
+          upiId: partner.bankDetails.upiId ?? "",
         }
       : undefined,
   });
@@ -150,7 +152,11 @@ export function BusinessProfilePage() {
 
   const onSubmitBank = async (values: BankFormValues) => {
     try {
-      await setBankDetails.mutateAsync({ ...values, branch: values.branch || undefined });
+      await setBankDetails.mutateAsync({
+        ...values,
+        branch: values.branch || undefined,
+        upiId: values.upiId || undefined,
+      });
       toast.success("Bank details saved");
     } catch (err) {
       toast.error("Could not save bank details", err instanceof Error ? err.message : undefined);
@@ -159,7 +165,7 @@ export function BusinessProfilePage() {
 
   const onSubmitPassword = async (values: PasswordFormValues) => {
     try {
-      await authApi.changePassword(values.currentPassword, values.newPassword);
+      await changePassword(values.currentPassword, values.newPassword);
       toast.success("Password changed");
       resetPassword();
     } catch (err) {
@@ -269,6 +275,7 @@ export function BusinessProfilePage() {
               <Input label="Bank name" {...registerBank("bankName", { required: true })} />
             </div>
             <Input label="Branch (optional)" {...registerBank("branch")} />
+            <Input label="UPI ID (optional)" placeholder="yourname@upi" {...registerBank("upiId")} />
             <Button type="submit" isLoading={isBankSubmitting} className="w-fit">
               Save bank details
             </Button>

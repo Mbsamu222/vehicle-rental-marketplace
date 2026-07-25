@@ -6,7 +6,7 @@ import { useNavigate } from "@vrm/ui";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { TicketPercent, IdCard, MapPin, Loader2 } from "lucide-react";
+import { TicketPercent, IdCard, MapPin, Loader2, ImageOff, Wallet, CreditCard, Smartphone, ShieldCheck, Clock, Users, Minus, Plus } from "lucide-react";
 import {
   useVehicle,
   useDrivingLicenses,
@@ -15,10 +15,18 @@ import {
   useValidateCoupon,
   useCreatePaymentOrder,
   useVerifyPayment,
+  useMonetizationStatus,
+  type PaymentProvider,
 } from "@vrm/api-client";
-import { Button, Card, Input, Select, DateRangeFields, Modal, FileUpload, useToast, PageSpinner, Badge } from "@vrm/ui";
+import { Button, Card, Input, Select, Checkbox, DateRangeFields, Modal, FileUpload, useToast, PageSpinner, Badge, cn } from "@vrm/ui";
 
 const TAX_RATE = 0.18;
+
+const PAYMENT_METHODS: { value: PaymentProvider; label: string; icon: typeof Wallet; available: boolean }[] = [
+  { value: "WALLET", label: "Wallet balance", icon: Wallet, available: true },
+  { value: "RAZORPAY", label: "Card / UPI / Netbanking", icon: CreditCard, available: false },
+  { value: "STRIPE", label: "International card", icon: Smartphone, available: false },
+];
 
 function estimatePrice(pricePerHour: number, pricePerDay: number, pickup: string, returnAt: string, discount: number) {
   if (!pickup || !returnAt) return null;
@@ -29,7 +37,7 @@ function estimatePrice(pricePerHour: number, pricePerDay: number, pickup: string
   const basePrice = fullDays * pricePerDay + remainingHours * pricePerHour;
   const taxable = Math.max(0, basePrice - discount);
   const tax = Number((taxable * TAX_RATE).toFixed(2));
-  return { basePrice: Number(basePrice.toFixed(2)), tax, discount };
+  return { basePrice: Number(basePrice.toFixed(2)), tax, discount, fullDays, remainingHours };
 }
 
 const licenseSchema = z.object({
@@ -46,6 +54,7 @@ export function BookingCheckoutPage() {
 
   const { data: vehicle, isLoading } = useVehicle(id);
   const { data: licenses, isLoading: licensesLoading } = useDrivingLicenses();
+  const { data: monetizationStatus } = useMonetizationStatus();
   const addLicense = useAddDrivingLicense();
   const createBooking = useCreateBooking();
   const validateCoupon = useValidateCoupon();
@@ -62,6 +71,12 @@ export function BookingCheckoutPage() {
   const [licenseModalOpen, setLicenseModalOpen] = useState(false);
   const [licenseImages, setLicenseImages] = useState<string[]>([]);
   const [isPaying, setIsPaying] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentProvider>("WALLET");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [extraDriverCount, setExtraDriverCount] = useState(0);
+  const [isYoungDriver, setIsYoungDriver] = useState(false);
+
+  const primaryImage = vehicle?.images?.find((i) => i.isPrimary) ?? vehicle?.images?.[0];
 
   const {
     register: registerLicense,
@@ -116,6 +131,10 @@ export function BookingCheckoutPage() {
       toast.error("Fill in all required fields");
       return;
     }
+    if (!agreedToTerms) {
+      toast.error("Please accept the terms & cancellation policy to continue");
+      return;
+    }
     setIsPaying(true);
     try {
       const booking = await createBooking.mutateAsync({
@@ -126,9 +145,11 @@ export function BookingCheckoutPage() {
         pickupLocation,
         returnLocation,
         couponCode: couponCode || undefined,
+        extraDriverCount,
+        isYoungDriver,
       });
 
-      const order = await createOrder.mutateAsync({ bookingId: booking.id, provider: "WALLET" });
+      const order = await createOrder.mutateAsync({ bookingId: booking.id, provider: paymentMethod });
       if (order.payment.status !== "PAID") {
         await verifyPayment.mutateAsync({ paymentId: order.payment.id, providerRefId: "dev-manual" });
       }
@@ -161,6 +182,52 @@ export function BookingCheckoutPage() {
               <Input label="Return location" value={returnLocation} onChange={(e) => setReturnLocation(e.target.value)} />
             </div>
           </Card>
+
+          {(monetizationStatus?.EXTRA_DRIVER_FEE || monetizationStatus?.YOUNG_DRIVER_FEE) && (
+            <Card className="p-5">
+              <h3 className="mb-4 flex items-center gap-2 font-heading font-semibold">
+                <Users size={16} className="text-secondary" /> Drivers
+              </h3>
+              <div className="flex flex-col gap-4">
+                {monetizationStatus?.EXTRA_DRIVER_FEE && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Additional drivers</p>
+                      <p className="text-xs text-primary-400">Anyone besides you who may drive during the rental.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        aria-label="Decrease additional drivers"
+                        disabled={extraDriverCount <= 0}
+                        onClick={() => setExtraDriverCount((n) => Math.max(0, n - 1))}
+                        className="flex size-8 items-center justify-center rounded-lg border border-border text-primary-500 disabled:opacity-40 dark:border-dark-border dark:text-primary-300"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="w-4 text-center text-sm font-semibold">{extraDriverCount}</span>
+                      <button
+                        type="button"
+                        aria-label="Increase additional drivers"
+                        disabled={extraDriverCount >= 5}
+                        onClick={() => setExtraDriverCount((n) => Math.min(5, n + 1))}
+                        className="flex size-8 items-center justify-center rounded-lg border border-border text-primary-500 disabled:opacity-40 dark:border-dark-border dark:text-primary-300"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {monetizationStatus?.YOUNG_DRIVER_FEE && (
+                  <Checkbox
+                    label="The primary driver is a young driver"
+                    checked={isYoungDriver}
+                    onChange={(e) => setIsYoungDriver(e.target.checked)}
+                  />
+                )}
+              </div>
+            </Card>
+          )}
 
           <Card className="p-5">
             <h3 className="mb-4 flex items-center gap-2 font-heading font-semibold">
@@ -200,15 +267,81 @@ export function BookingCheckoutPage() {
               </Button>
             </div>
           </Card>
+
+          <Card className="p-5">
+            <h3 className="mb-4 flex items-center gap-2 font-heading font-semibold">
+              <Wallet size={16} className="text-secondary" /> Payment method
+            </h3>
+            <div className="flex flex-col gap-2">
+              {PAYMENT_METHODS.map((method) => {
+                const Icon = method.icon;
+                const selected = paymentMethod === method.value;
+                return (
+                  <button
+                    key={method.value}
+                    type="button"
+                    disabled={!method.available}
+                    onClick={() => setPaymentMethod(method.value)}
+                    className={cn(
+                      "flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors",
+                      "disabled:cursor-not-allowed disabled:opacity-50",
+                      selected ? "border-secondary bg-secondary/5 dark:bg-secondary/10" : "border-border dark:border-dark-border",
+                    )}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Icon size={16} className={selected ? "text-secondary" : "text-primary-400"} />
+                      {method.label}
+                    </span>
+                    {method.available ? (
+                      <span
+                        className={cn(
+                          "size-4 shrink-0 rounded-full border-2",
+                          selected ? "border-secondary bg-secondary" : "border-border dark:border-dark-border",
+                        )}
+                      />
+                    ) : (
+                      <Badge tone="neutral">Coming soon</Badge>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
         </div>
 
         <div>
           <Card className="sticky top-24 p-5">
-            <h3 className="mb-4 font-heading font-semibold">
-              {vehicle.brand?.name} {vehicle.model}
-            </h3>
+            <div className="flex gap-3 border-b border-border pb-4 dark:border-dark-border">
+              <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-primary-100/50 dark:bg-white/5">
+                {primaryImage ? (
+                  <img src={primaryImage.url} alt={vehicle.model} className="size-full object-cover" />
+                ) : (
+                  <div className="flex size-full items-center justify-center text-primary-300">
+                    <ImageOff size={22} />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-heading font-semibold">
+                  {vehicle.brand?.name} {vehicle.model}
+                </h3>
+                <p className="mt-0.5 text-xs capitalize text-primary-400">
+                  {vehicle.transmission} • {vehicle.fuelType} • {vehicle.seatingCapacity} seats
+                </p>
+              </div>
+            </div>
+
             {estimate ? (
-              <div className="flex flex-col gap-2 text-sm">
+              <div className="mt-4 flex flex-col gap-2 text-sm">
+                <div className="flex items-center justify-between rounded-lg bg-primary-50/70 px-3 py-2 text-xs font-semibold text-primary-600 dark:bg-white/5 dark:text-primary-300">
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={13} className="text-secondary" /> Duration
+                  </span>
+                  <span>
+                    {estimate.fullDays > 0 && `${estimate.fullDays} day${estimate.fullDays !== 1 ? "s" : ""} `}
+                    {estimate.remainingHours > 0 && `${estimate.remainingHours} hr${estimate.remainingHours !== 1 ? "s" : ""}`}
+                  </span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-primary-400">Base price</span>
                   <span>₹{estimate.basePrice}</span>
@@ -231,14 +364,39 @@ export function BookingCheckoutPage() {
                   <span>Estimated total</span>
                   <span>₹{(estimate.basePrice - estimate.discount + estimate.tax + Number(vehicle.securityDeposit)).toFixed(2)}</span>
                 </div>
+                {(monetizationStatus?.SERVICE_FEE || extraDriverCount > 0 || isYoungDriver) && (
+                  <p className="text-xs text-primary-400">
+                    Any applicable service fee, extra-driver, or young-driver surcharges are calculated at checkout and
+                    shown on your confirmed booking.
+                  </p>
+                )}
               </div>
             ) : (
-              <p className="text-sm text-primary-400">Select your rental dates to see pricing.</p>
+              <p className="mt-4 text-sm text-primary-400">Select your rental dates to see pricing.</p>
             )}
-            <p className="mt-3 text-xs text-primary-400">
-              Payment is simulated via your wallet balance in this environment — no live payment gateway keys are configured.
-            </p>
-            <Button fullWidth className="mt-5" isLoading={isPaying} onClick={onSubmit}>
+
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-primary-50/50 p-3 text-xs text-primary-500 dark:border-dark-border dark:bg-white/5 dark:text-primary-300">
+              <ShieldCheck size={14} className="mt-0.5 shrink-0 text-secondary" />
+              <span>
+                Free cancellation up to 24 hours before pickup for a full refund. Cancellations within 24 hours forfeit the security
+                deposit. Late returns are billed at the hourly rate.
+              </span>
+            </div>
+
+            {paymentMethod === "WALLET" && (
+              <p className="mt-3 text-xs text-primary-400">
+                Payment is simulated via your wallet balance in this environment — no live payment gateway keys are configured.
+              </p>
+            )}
+
+            <Checkbox
+              className="mt-4"
+              label="I agree to the terms of service and the cancellation policy"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+            />
+
+            <Button fullWidth className="mt-4" isLoading={isPaying} disabled={!agreedToTerms} onClick={onSubmit}>
               Confirm & pay
             </Button>
           </Card>

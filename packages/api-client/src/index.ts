@@ -4,3 +4,4 @@ export { http } from "./http";
 export * from "./endpoints";
 export * from "./context/AuthContext";
 export * from "./hooks";
+export * from "./firebase";

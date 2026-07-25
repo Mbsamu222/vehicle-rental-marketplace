@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { MapPin, Phone, Mail } from "lucide-react";
-import { useBooking, useCancelBooking, useCreateReview } from "@vrm/api-client";
+import { useBooking, useCancelBooking, useCancellationPreview, useCreateReview } from "@vrm/api-client";
 import { Badge, Button, Card, PageSpinner, BookingStatusTimeline, StarRating, Textarea, Modal, useToast } from "@vrm/ui";
 
 const CANCELLABLE = ["PENDING", "CONFIRMED", "APPROVED", "VEHICLE_READY"];
@@ -16,17 +16,19 @@ export function BookingDetailPage() {
   const createReview = useCreateReview();
   const toast = useToast();
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [vehicleRating, setVehicleRating] = useState(5);
   const [partnerRating, setPartnerRating] = useState(5);
   const { register, handleSubmit, reset } = useForm<{ comment: string }>();
+  const { data: cancellationPreview, isLoading: previewLoading } = useCancellationPreview(cancelModalOpen ? id : undefined);
 
   if (isLoading || !booking) return <PageSpinner />;
 
   const onCancel = async () => {
-    if (!confirm("Cancel this booking?")) return;
     try {
       await cancelBooking.mutateAsync({ id: booking.id });
       toast.success("Booking cancelled");
+      setCancelModalOpen(false);
     } catch (err) {
       toast.error("Could not cancel", err instanceof Error ? err.message : undefined);
     }
@@ -59,7 +61,7 @@ export function BookingDetailPage() {
         </div>
         <div className="flex gap-2">
           {CANCELLABLE.includes(booking.status) && (
-            <Button variant="outline" onClick={onCancel} isLoading={cancelBooking.isPending}>
+            <Button variant="outline" onClick={() => setCancelModalOpen(true)}>
               Cancel booking
             </Button>
           )}
@@ -127,6 +129,24 @@ export function BookingDetailPage() {
               <span className="text-primary-400">Tax</span>
               <span>₹{booking.taxAmount}</span>
             </div>
+            {Number(booking.serviceFeeAmount) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-primary-400">Service fee</span>
+                <span>₹{booking.serviceFeeAmount}</span>
+              </div>
+            )}
+            {Number(booking.extraDriverFeeAmount) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-primary-400">Extra driver fee ({booking.extraDriverCount})</span>
+                <span>₹{booking.extraDriverFeeAmount}</span>
+              </div>
+            )}
+            {Number(booking.youngDriverFeeAmount) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-primary-400">Young driver fee</span>
+                <span>₹{booking.youngDriverFeeAmount}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-primary-400">Security deposit</span>
               <span>₹{booking.securityDeposit}</span>
@@ -135,6 +155,18 @@ export function BookingDetailPage() {
               <span>Total</span>
               <span>₹{booking.totalAmount}</span>
             </div>
+            {Number(booking.cancellationFeeAmount) > 0 && (
+              <div className="mt-2 flex justify-between border-t border-border pt-3 text-danger dark:border-dark-border">
+                <span>Cancellation fee (deducted from refund)</span>
+                <span>₹{booking.cancellationFeeAmount}</span>
+              </div>
+            )}
+            {Number(booking.lateReturnFeeAmount) > 0 && (
+              <div className="mt-2 flex justify-between border-t border-border pt-3 text-danger dark:border-dark-border">
+                <span>Late-return fee (outstanding, follow-up required)</span>
+                <span>₹{booking.lateReturnFeeAmount}</span>
+              </div>
+            )}
           </div>
           {booking.payments?.[0] && (
             <Badge tone={booking.payments[0].status === "PAID" ? "success" : "warning"} className="mt-4">
@@ -159,6 +191,32 @@ export function BookingDetailPage() {
             Submit review
           </Button>
         </form>
+      </Modal>
+
+      <Modal open={cancelModalOpen} onClose={() => setCancelModalOpen(false)} title="Cancel this booking?">
+        <div className="flex flex-col gap-4">
+          {previewLoading ? (
+            <p className="text-sm text-primary-400">Checking cancellation policy…</p>
+          ) : cancellationPreview ? (
+            <div className="flex flex-col gap-2 rounded-xl border border-border p-4 text-sm dark:border-dark-border">
+              {cancellationPreview.feeAmount > 0 && (
+                <div className="flex justify-between text-danger">
+                  <span>Cancellation fee</span>
+                  <span>₹{cancellationPreview.feeAmount}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold">
+                <span>You'll be refunded</span>
+                <span>₹{cancellationPreview.refundAmount}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-primary-400">This booking hasn't been paid for yet, so there's nothing to refund.</p>
+          )}
+          <Button variant="danger" onClick={onCancel} isLoading={cancelBooking.isPending} fullWidth>
+            Confirm cancellation
+          </Button>
+        </div>
       </Modal>
     </>
   );

@@ -4,7 +4,7 @@ A production-oriented foundation for a multi-vendor vehicle rental marketplace: 
 
 ## Current scope
 
-This repository contains the **backend + database** and the **full web platform** (public marketing site, customer portal, rental-partner dashboard, admin dashboard). Mobile apps (React Native, per the original spec) are a deliberate next phase, not yet started.
+This repository contains the **backend + database**, the **full web platform** (public marketing site, customer portal, rental-partner dashboard, admin dashboard), and **native mobile apps** (Flutter) for all three roles.
 
 ### Backend
 
@@ -32,6 +32,20 @@ Shared packages:
 
 **Known, deliberate gaps** (not papered over — see `docs/API.md` and inline notes in the admin app): no "list all bookings"/"list all vehicles" admin endpoint (admin oversight is scoped to the dashboard aggregate + the vehicle-approval queue); no object-storage upload endpoint yet, so image/document "uploads" inline files as `data:` URLs client-side (satisfies the backend's URL validation and works end-to-end in dev, but isn't real file storage); no public contact-form or newsletter-subscription endpoint, so those forms validate and show a success state without a network call; live payment provider wiring is stubbed (Razorpay/Stripe integration points exist server-side but checkout in `public-site` uses the `WALLET` provider path, which is fully real — wallet debit, booking confirmation, and status history all execute for real).
 
+### Mobile apps
+
+Three Flutter apps, one per role, sharing a local package the same way the web apps share `packages/*`. Auth is Firebase (email/password on mobile; the web apps additionally support phone OTP), matching how the backend actually verifies sessions (`backend/app/core/firebase.py` — the backend never issues its own tokens).
+
+- **`apps/customer-mobile`** — browse/search vehicles, vehicle detail with trip date/time pickers, booking checkout + wallet payment, booking tracking (status timeline), wallet, driving licenses, saved locations, notifications, wishlist, support tickets.
+- **`apps/partner-mobile`** — registration + business onboarding (KYC documents, bank details), dashboard, vehicle CRUD + images, booking-request approval workflow, reviews replies, support.
+- **`apps/admin-mobile`** — login only (no signup), dashboard, vehicle approval queue, partner verification + document review, driving-license review queue, user management (suspend/ban), coupons CRUD, support tickets.
+
+Shared package:
+
+- **`packages/mobile_core`** — typed API client (`Dio`, mirrors the same `{success, data, meta}` envelope as `packages/api-client`), one model class per backend entity, a `FirebaseAuthService` + Riverpod `AuthController` (the mobile equivalent of `AuthContext.tsx`, keyed by `allowedUserTypes` per app), the shared theme (matches `packages/config`'s color tokens), and common widgets (`BookingStatusTimeline`, `StatusBadge`, etc.).
+
+**Firebase setup needed before phone auth / push notifications work on-device**: each app's `firebase_options.dart` currently reuses the existing project's (`vehicle-rent-001`) *web* app config, which is enough for email/password auth to work everywhere. Phone auth's native app-verification (Android SHA-1/SHA-256 fingerprints, iOS APNs) requires registering real Android/iOS apps for this project in the Firebase console — run `flutterfire configure --project=vehicle-rent-001` once you have Firebase CLI access to replace the placeholder options with real per-platform config.
+
 ## Repository layout
 
 ```
@@ -55,11 +69,15 @@ vehicle-rental-marketplace/
 ├── packages/
 │   ├── config/                   # shared Tailwind preset + base tsconfig
 │   ├── ui/                       # design system component library
-│   └── api-client/                # typed API client + TanStack Query hooks + auth context
+│   ├── api-client/                # typed API client + TanStack Query hooks + auth context
+│   └── mobile_core/               # Flutter: typed API client, models, Firebase auth, theme
 ├── apps/
 │   ├── public-site/               # unified public + customer site (port 5176)
 │   ├── partner-web/                # rental partner dashboard (port 5174)
-│   └── admin-web/                  # admin dashboard (port 5175)
+│   ├── admin-web/                  # admin dashboard (port 5175)
+│   ├── customer-mobile/            # Flutter customer app
+│   ├── partner-mobile/             # Flutter rental-partner app
+│   └── admin-mobile/               # Flutter admin app (login only)
 ├── docker-compose.yml            # postgres + api
 ├── package.json                   # npm workspaces root (packages/*, apps/*)
 └── docs/API.md                   # endpoint reference
@@ -103,6 +121,20 @@ npm run dev:admin      # http://localhost:5175 — admin-web
 
 Each app reads its API base URL from `NEXT_PUBLIC_API_URL` (see each app's `.env.example`; defaults to `http://localhost:4000/api/v1`).
 
+### Mobile apps
+
+Requires the Flutter SDK (stable channel; installed here via `git clone -b stable https://github.com/flutter/flutter.git` since Homebrew wasn't available — see `~/development/flutter`). Each app is a normal Flutter project with a local path dependency on `packages/mobile_core`:
+
+```bash
+cd packages/mobile_core && flutter pub get && cd ../..
+
+cd apps/customer-mobile && flutter pub get
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000/api/v1   # Android emulator
+# flutter run --dart-define=API_BASE_URL=http://localhost:4000/api/v1  # iOS simulator / desktop / web / real device on the same network as the backend
+```
+
+Same pattern for `apps/partner-mobile` and `apps/admin-mobile`. `10.0.2.2` is the Android emulator's alias for the host machine — swap it for your machine's LAN IP when running on a physical device. This sandbox has Chrome and macOS desktop targets available but no Android SDK or full Xcode install, so builds have been verified with `flutter analyze` (zero errors across all four packages) and a full `flutter build web --release` for `customer-mobile`; they haven't been run end-to-end against a live backend here — do that once Postgres + the API are up, the same way as the golden-path suggestion below.
+
 ### Why the migration folder was generated offline
 
 This sandbox has no local Postgres/Docker, so the initial migration SQL was produced with `prisma migrate diff --from-empty --to-schema-datamodel` (a schema diff, no live DB needed) rather than `prisma migrate dev`. Functionally it's the same SQL `migrate dev` would have produced; run `npx prisma migrate dev` yourself once Postgres is up to apply it and let Prisma take over migration history normally from that point on. For the same reason, the web apps have been verified with `tsc --noEmit` and `next build`/dev-server boot against the real source, but not yet walked end-to-end against a live database in this environment — do that once Postgres is running (see the golden-path suggestion below).
@@ -117,7 +149,7 @@ This sandbox has no local Postgres/Docker, so the initial migration SQL was prod
 2. ~~Rental partner dashboard~~ ✅
 3. ~~Admin dashboard~~ ✅
 4. ~~Public marketing site~~ ✅
-5. React Native customer + partner apps
+5. ~~Mobile apps (customer, partner, admin)~~ ✅ (Flutter, not React Native as originally scoped — see "Mobile apps" above)
 6. Real object-storage upload endpoint (S3/R2) to replace the dev-mode `data:` URL fallback used by every file upload in the web apps; live Razorpay/Stripe client-side integration; Nodemailer templates for OTP/notifications; an admin "all bookings"/"all vehicles" listing endpoint
 
 ### Suggested first end-to-end smoke test once Postgres is running

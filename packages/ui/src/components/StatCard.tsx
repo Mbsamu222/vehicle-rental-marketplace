@@ -18,26 +18,27 @@ export function StatCard({
 }) {
   const toneClasses: Record<string, string> = {
     primary: "bg-primary-50 text-primary dark:bg-white/10 dark:text-white",
-    secondary: "bg-secondary-50 text-secondary dark:bg-secondary-500/15 dark:text-secondary-300",
+    secondary: "bg-secondary-50 text-secondary dark:bg-secondary-500/15 dark:text-accent-300",
     accent: "bg-accent-50 text-accent-600 dark:bg-accent-500/15 dark:text-accent-300",
-    success: "bg-green-50 text-green-600 dark:bg-green-500/15 dark:text-green-400",
+    success: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
     warning: "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400",
-    danger: "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400",
+    danger: "bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400",
   };
 
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between">
+    <Card hoverable className="flex flex-col justify-between p-5 shadow-soft border border-border/80 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm text-primary-400">{label}</p>
-          <p className="mt-1.5 font-heading text-2xl font-bold text-primary dark:text-white">{value}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary-400">{label}</p>
+          <p className="mt-2 font-heading text-2xl font-black tracking-tight text-primary dark:text-white sm:text-3xl">{value}</p>
         </div>
-        {icon && <div className={cn("flex size-11 items-center justify-center rounded-xl", toneClasses[tone])}>{icon}</div>}
+        {icon && <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-2xl shadow-soft", toneClasses[tone])}>{icon}</div>}
       </div>
       {trend && (
-        <div className={cn("mt-3 inline-flex items-center gap-1 text-xs font-medium", trend.value >= 0 ? "text-success" : "text-danger")}>
+        <div className={cn("mt-4 inline-flex items-center gap-1 text-xs font-bold", trend.value >= 0 ? "text-success" : "text-danger")}>
           {trend.value >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-          {Math.abs(trend.value)}% {trend.label ?? "vs last period"}
+          <span>{Math.abs(trend.value)}%</span>
+          <span className="font-normal text-primary-400">{trend.label ?? "vs last period"}</span>
         </div>
       )}
     </Card>

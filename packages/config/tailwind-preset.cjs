@@ -29,6 +29,7 @@ module.exports = {
           600: "#2563EB",
           700: "#1D4ED8",
           800: "#1E40AF",
+          900: "#1E3A8A",
         },
         accent: {
           DEFAULT: "#14B8A6",
@@ -54,19 +55,23 @@ module.exports = {
         },
       },
       fontFamily: {
-        heading: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        heading: ["Sora", "Urbanist", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["Urbanist", "Sora", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["Sora", "Urbanist", "sans-serif"],
       },
       borderRadius: {
         xl: "1rem",
         "2xl": "1.25rem",
         "3xl": "1.5rem",
+        "4xl": "2rem",
       },
       boxShadow: {
         soft: "0 2px 8px 0 rgb(17 24 39 / 0.06)",
         card: "0 4px 20px -2px rgb(17 24 39 / 0.08)",
         glass: "0 8px 32px 0 rgb(17 24 39 / 0.10)",
         "glass-dark": "0 8px 32px 0 rgb(0 0 0 / 0.35)",
+        glow: "0 0 25px -5px rgba(37, 99, 235, 0.4)",
+        "glow-accent": "0 0 25px -5px rgba(20, 184, 166, 0.4)",
       },
       backdropBlur: {
         xs: "2px",

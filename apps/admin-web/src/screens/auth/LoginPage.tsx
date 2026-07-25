@@ -15,7 +15,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { loginWithEmail } = useAuth();
   const navigate = useNavigate();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -27,7 +27,7 @@ export function LoginPage() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await login(values.email, values.password);
+      await loginWithEmail(values.email, values.password);
       const redirectTo = searchParams.get("redirect") ?? "/dashboard";
       navigate(redirectTo, { replace: true });
     } catch (err) {

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Trash2, MapPin } from "lucide-react";
 import {
-  authApi,
+  changePassword,
   useAuth,
   useUpdateProfile,
   useDrivingLicenses,
@@ -102,7 +102,7 @@ export function ProfilePage() {
 
   const onChangePassword = handlePasswordSubmit(async (values) => {
     try {
-      await authApi.changePassword(values.currentPassword, values.newPassword);
+      await changePassword(values.currentPassword, values.newPassword);
       toast.success("Password changed");
       resetPassword();
     } catch (err) {

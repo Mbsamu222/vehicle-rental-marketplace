@@ -1,0 +1,12 @@
+[project]
+name = "backend"
+version = "1.0.0"
+description = "Vehicle Rental Marketplace API"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+include = ["app*", "scripts*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

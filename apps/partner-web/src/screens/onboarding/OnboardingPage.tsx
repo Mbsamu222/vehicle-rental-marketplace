@@ -47,6 +47,7 @@ const bankSchema = z.object({
   ifscCode: z.string().min(4).max(20),
   bankName: z.string().min(1, "Required"),
   branch: z.string().optional().or(z.literal("")),
+  upiId: z.string().optional().or(z.literal("")),
 });
 type BankFormValues = z.infer<typeof bankSchema>;
 
@@ -127,6 +128,7 @@ export function OnboardingPage() {
           ifscCode: partner.bankDetails.ifscCode,
           bankName: partner.bankDetails.bankName,
           branch: partner.bankDetails.branch ?? "",
+          upiId: partner.bankDetails.upiId ?? "",
         }
       : undefined,
   });
@@ -165,7 +167,11 @@ export function OnboardingPage() {
 
   const onSubmitBank = async (values: BankFormValues) => {
     try {
-      await setBankDetails.mutateAsync({ ...values, branch: values.branch || undefined });
+      await setBankDetails.mutateAsync({
+        ...values,
+        branch: values.branch || undefined,
+        upiId: values.upiId || undefined,
+      });
       toast.success("Bank details saved");
     } catch (err) {
       toast.error("Could not save bank details", err instanceof Error ? err.message : undefined);
@@ -295,6 +301,7 @@ export function OnboardingPage() {
                   <Input label="Bank name" {...registerBank("bankName", { required: true })} />
                 </div>
                 <Input label="Branch (optional)" {...registerBank("branch")} />
+                <Input label="UPI ID (optional)" placeholder="yourname@upi" {...registerBank("upiId")} />
                 <Button type="submit" isLoading={isBankSubmitting} fullWidth className="mt-2">
                   Save bank details
                 </Button>

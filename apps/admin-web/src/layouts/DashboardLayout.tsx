@@ -16,6 +16,7 @@ import {
   ScrollText,
   Settings as SettingsIcon,
   ShieldHalf,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@vrm/api-client";
 import { DashboardShell, type NavItem, useNavigate } from "@vrm/ui";
@@ -28,6 +29,7 @@ const navItems: NavItem[] = [
   { to: "/driving-licenses", label: "Driving Licenses", icon: <IdCard size={18} /> },
   { to: "/transactions", label: "Transactions", icon: <Wallet size={18} /> },
   { to: "/coupons", label: "Coupons", icon: <Ticket size={18} /> },
+  { to: "/monetization", label: "Monetization", icon: <DollarSign size={18} /> },
   { to: "/catalog", label: "Catalog", icon: <MapPinned size={18} /> },
   { to: "/roles", label: "Roles & Permissions", icon: <ShieldCheck size={18} /> },
   { to: "/support", label: "Support Tickets", icon: <LifeBuoy size={18} /> },

@@ -175,6 +175,7 @@ export function PartnerDetailPage() {
                 <p className="text-primary-400">{partner.bankDetails.bankName} • {partner.bankDetails.branch ?? "—"}</p>
                 <p className="text-primary-400">A/C {partner.bankDetails.accountNumber}</p>
                 <p className="text-primary-400">IFSC {partner.bankDetails.ifscCode}</p>
+                {partner.bankDetails.upiId && <p className="text-primary-400">UPI {partner.bankDetails.upiId}</p>}
               </div>
             )}
           </Card>

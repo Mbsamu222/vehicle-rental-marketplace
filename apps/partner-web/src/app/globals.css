@@ -3,11 +3,12 @@
 @tailwind utilities;
 
 html {
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Urbanist", "Sora", ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
 }
 
 body {
-  @apply bg-background text-primary dark:bg-dark-background dark:text-white;
+  @apply bg-background text-primary antialiased text-base leading-relaxed dark:bg-dark-background dark:text-white;
 }
 
 ::selection {
