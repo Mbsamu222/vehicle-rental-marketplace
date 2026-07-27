@@ -165,4 +165,9 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> logout() => _signOutLocally();
 
   Future<void> sendPasswordResetEmail(String email) => authService.sendPasswordResetEmail(email);
+
+  /// Re-authenticates with [currentPassword] before setting [newPassword] —
+  /// Firebase requires a recent sign-in for this operation.
+  Future<void> changePassword({required String currentPassword, required String newPassword}) =>
+      authService.changePassword(currentPassword: currentPassword, newPassword: newPassword);
 }

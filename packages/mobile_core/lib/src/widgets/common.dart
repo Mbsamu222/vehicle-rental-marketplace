@@ -52,6 +52,10 @@ class _LoadingButtonState extends State<LoadingButton> {
   }
 }
 
+/// Mirrors packages/ui Feedback.tsx's EmptyState: a dashed-border rounded panel
+/// with a circular tinted icon chip, a semibold title, and muted description.
+/// The dashed border is the recognisable part of the web treatment, so it is
+/// drawn here rather than replaced with a bare centred column.
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -61,25 +65,81 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 56, color: AppColors.mutedTextOf(context)),
-            const SizedBox(height: 16),
-            Text(title, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
-            if (message != null) ...[
-              const SizedBox(height: 8),
-              Text(message!, style: TextStyle(color: AppColors.mutedTextOf(context)), textAlign: TextAlign.center),
+      child: CustomPaint(
+        painter: _DashedBorderPainter(color: AppColors.borderOf(context), radius: 20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 44),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : AppColors.primary50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 26, color: AppColors.primary300),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textOf(context)),
+              ),
+              if (message != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  message!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.mutedTextOf(context)),
+                ),
+              ],
+              if (action != null) ...[const SizedBox(height: 16), action!],
             ],
-            if (action != null) ...[const SizedBox(height: 20), action!],
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// Flutter has no dashed `BorderSide`, so the web's `border-dashed` is painted
+/// manually around a rounded rect.
+class _DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+  const _DashedBorderPainter({required this.color, required this.radius});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    final path = Path()
+      ..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)));
+
+    const dash = 6.0;
+    const gap = 4.0;
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        canvas.drawPath(metric.extractPath(distance, distance + dash), paint);
+        distance += dash + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorderPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.radius != radius;
 }
 
 class ErrorView extends StatelessWidget {

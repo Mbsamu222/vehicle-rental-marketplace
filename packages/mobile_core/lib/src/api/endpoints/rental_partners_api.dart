@@ -1,5 +1,7 @@
 import '../../models/pagination.dart';
+import '../../models/payment.dart';
 import '../../models/rental_partner.dart';
+import '../../models/subscription.dart';
 import '../api_client.dart';
 
 class RentalPartnersApi {
@@ -36,6 +38,22 @@ class RentalPartnersApi {
         "/rental-partners/me/bank-details",
         body: payload,
         parse: (data) => BankDetail.fromJson(asJsonMap(data)),
+      );
+
+  /// Throws [ApiException] with 403 when fleet analytics is disabled
+  /// platform-wide or the partner's plan doesn't include it — callers should
+  /// render a "locked / upgrade" state for that case rather than a generic
+  /// error.
+  Future<PartnerAnalytics> analytics() => _client.get(
+        "/rental-partners/me/analytics",
+        parse: (data) => PartnerAnalytics.fromJson(asJsonMap(data)),
+      );
+
+  /// Payout settlements for the signed-in partner, newest first.
+  Future<Paginated<AdminTransaction>> myPayouts({int page = 1, int limit = 20}) => _client.getPaginated(
+        "/payouts/mine",
+        query: {"page": page, "limit": limit},
+        parseItem: AdminTransaction.fromJson,
       );
 
   // ─── Admin oversight ───

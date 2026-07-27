@@ -108,6 +108,27 @@ async def list_blog_posts(pagination: Pagination = Depends(get_pagination()), db
     )
 
 
+# Must stay registered ahead of `/blog/{slug}`, or "manage" is swallowed as a slug.
+@router.get("/blog/manage", dependencies=[admin_only, Depends(require_permission("cms.manage"))])
+async def admin_list_blog_posts(
+    pagination: Pagination = Depends(get_pagination()), db: AsyncSession = Depends(get_db)
+):
+    """Every post including drafts — the public `/blog` feed filters to
+    PUBLISHED, which would hide a draft the moment an author saved it. Mirrors
+    `/hero-banners/manage`."""
+    stmt = (
+        select(BlogPost)
+        .order_by(BlogPost.created_at.desc())
+        .offset(pagination.skip)
+        .limit(pagination.take)
+    )
+    posts = (await db.execute(stmt)).scalars().all()
+    total = (await db.execute(select(func.count()).select_from(BlogPost))).scalar_one()
+    return success_response(
+        [orm_to_dict(p) for p in posts], meta=pagination_meta(pagination.page, pagination.limit, total)
+    )
+
+
 @router.get("/blog/{slug}")
 async def get_blog_post(slug: str, db: AsyncSession = Depends(get_db)):
     post = (await db.execute(select(BlogPost).where(BlogPost.slug == slug))).scalar_one_or_none()

@@ -1,4 +1,7 @@
 import '../../models/admin.dart';
+import '../../models/catalog.dart';
+import '../../models/monetization.dart';
+import '../../models/monetization_feature.dart';
 import '../../models/pagination.dart';
 import '../../models/user.dart';
 import '../api_client.dart';
@@ -75,4 +78,80 @@ class AdminApi {
 
   Future<Map<String, dynamic>> upsertSetting(String key, Object? value) =>
       _client.put("/admin/settings/$key", body: {"value": value}, parse: (data) => asJsonMap(data));
+
+  // ─── Monetization ───
+
+  Future<List<MonetizationFeature>> monetizationFeatures() => _client.get(
+        "/admin/monetization/features",
+        parse: (data) => (data as List).map((e) => MonetizationFeature.fromJson(asJsonMap(e))).toList(),
+      );
+
+  /// Both fields are optional server-side — pass only what's changing so a
+  /// toggle doesn't clobber the feature's config blob and vice versa.
+  Future<MonetizationFeature> updateMonetizationFeature(
+    String key, {
+    bool? isEnabled,
+    Map<String, dynamic>? config,
+  }) =>
+      _client.patch(
+        "/admin/monetization/features/$key",
+        body: {"isEnabled": ?isEnabled, "config": ?config},
+        parse: (data) => MonetizationFeature.fromJson(asJsonMap(data)),
+      );
+
+  /// Every slot including inactive ones — the public `/catalog/ad-slots` feed
+  /// only returns active rows.
+  Future<List<AdSlot>> manageAdSlots() => _client.get(
+        "/admin/ad-slots/manage",
+        parse: (data) => (data as List).map((e) => AdSlot.fromJson(asJsonMap(e))).toList(),
+      );
+
+  Future<List<AffiliatePartner>> manageAffiliatePartners() => _client.get(
+        "/admin/affiliate-partners/manage",
+        parse: (data) => (data as List).map((e) => AffiliatePartner.fromJson(asJsonMap(e))).toList(),
+      );
+
+  // ─── CMS ───
+
+  Future<CmsPage> upsertCmsPage({required String slug, required String title, required String content}) =>
+      _client.put(
+        "/admin/cms",
+        body: {"slug": slug, "title": title, "content": content},
+        parse: (data) => CmsPage.fromJson(asJsonMap(data)),
+      );
+
+  Future<BlogPost> upsertBlogPost({
+    required String slug,
+    required String title,
+    required String content,
+    String? excerpt,
+    String? coverImageUrl,
+    required String status,
+  }) =>
+      _client.put(
+        "/admin/blog",
+        body: {
+          "slug": slug,
+          "title": title,
+          "content": content,
+          "excerpt": ?excerpt,
+          "coverImageUrl": ?coverImageUrl,
+          "status": status,
+        },
+        parse: (data) => BlogPost.fromJson(asJsonMap(data)),
+      );
+
+  /// Every post including drafts — the public `catalog.blogPosts()` feed only
+  /// returns PUBLISHED rows, which would hide a draft as soon as it's saved.
+  Future<Paginated<BlogPost>> manageBlogPosts({int page = 1, int limit = 50}) => _client.getPaginated(
+        "/admin/blog/manage",
+        query: {"page": page, "limit": limit},
+        parseItem: BlogPost.fromJson,
+      );
+
+  /// Every slide including inactive ones.
+  Future<List<HeroBannerSlide>> manageHeroBanners() => _client.get(
+        "/admin/hero-banners/manage",
+        parse: (data) => (data as List).map((e) => HeroBannerSlide.fromJson(asJsonMap(e))).toList(),
+      );
 }

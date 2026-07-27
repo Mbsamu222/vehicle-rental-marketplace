@@ -89,6 +89,11 @@ class AdminTransaction {
   final String? rentalPartnerId;
   final String? walletId;
   final String? reference;
+
+  /// Free-form payload the backend attaches per transaction type — for payouts
+  /// it carries `bookingCount` (see backend/app/modules/payouts/service.py).
+  /// Serialized as `metadata` (transaction_metadata is renamed on the wire).
+  final Map<String, dynamic> metadata;
   final DateTime createdAt;
 
   AdminTransaction({
@@ -100,8 +105,14 @@ class AdminTransaction {
     this.rentalPartnerId,
     this.walletId,
     this.reference,
+    this.metadata = const {},
     required this.createdAt,
   });
+
+  int? get bookingCount {
+    final value = metadata["bookingCount"];
+    return value is num ? value.toInt() : null;
+  }
 
   factory AdminTransaction.fromJson(Map<String, dynamic> json) => AdminTransaction(
         id: asString(json["id"]),
@@ -112,6 +123,7 @@ class AdminTransaction {
         rentalPartnerId: asStringOrNull(json["rentalPartnerId"]),
         walletId: asStringOrNull(json["walletId"]),
         reference: asStringOrNull(json["reference"]),
+        metadata: asMapOrNull(json["metadata"]) ?? const {},
         createdAt: asDate(json["createdAt"]),
       );
 }

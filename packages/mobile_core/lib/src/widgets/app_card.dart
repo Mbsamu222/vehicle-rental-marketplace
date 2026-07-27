@@ -29,7 +29,7 @@ class AppCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: glass ? surface.withValues(alpha: 0.7) : surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderOf(context).withValues(alpha: 0.8)),
+        border: Border.all(color: AppColors.borderOf(context)),
         boxShadow: glass ? AppShadows.glass : AppShadows.soft,
       ),
       clipBehavior: Clip.antiAlias,

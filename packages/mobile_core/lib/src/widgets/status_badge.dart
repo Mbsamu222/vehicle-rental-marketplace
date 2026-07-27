@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/enums.dart';
+import '../models/subscription.dart';
 import '../theme/app_colors.dart';
 
 enum BadgeTone { neutral, success, warning, danger, info, accent }
@@ -83,6 +84,54 @@ class StatusBadge extends StatelessWidget {
           SupportTicketStatus.closed => BadgeTone.neutral,
           SupportTicketStatus.inProgress => BadgeTone.info,
           _ => BadgeTone.warning,
+        },
+      );
+
+  /// Same PaymentStatus → tone map the web uses on the payments and
+  /// transactions tables: PAID=success, FAILED=danger, everything else
+  /// (pending, authorized, refunded, partially refunded) reads as in-flight.
+  factory StatusBadge.payment(PaymentStatus status) => StatusBadge(
+        label: switch (status) {
+          PaymentStatus.pending => "Pending",
+          PaymentStatus.authorized => "Authorized",
+          PaymentStatus.paid => "Paid",
+          PaymentStatus.failed => "Failed",
+          PaymentStatus.refunded => "Refunded",
+          PaymentStatus.partiallyRefunded => "Partially refunded",
+          PaymentStatus.unknown => "Unknown",
+        },
+        tone: switch (status) {
+          PaymentStatus.paid => BadgeTone.success,
+          PaymentStatus.failed => BadgeTone.danger,
+          PaymentStatus.refunded || PaymentStatus.partiallyRefunded => BadgeTone.info,
+          _ => BadgeTone.warning,
+        },
+      );
+
+  /// Payout/transaction status, matching partner-web's PayoutsPage `statusTone`
+  /// map: PENDING=warning, SUCCESS=success, FAILED=danger.
+  factory StatusBadge.transaction(TransactionStatus status) => StatusBadge(
+        label: switch (status) {
+          TransactionStatus.pending => "Pending",
+          TransactionStatus.success => "Success",
+          TransactionStatus.failed => "Failed",
+          TransactionStatus.unknown => "Unknown",
+        },
+        tone: switch (status) {
+          TransactionStatus.success => BadgeTone.success,
+          TransactionStatus.failed => BadgeTone.danger,
+          _ => BadgeTone.warning,
+        },
+      );
+
+  /// Partner subscription lifecycle.
+  factory StatusBadge.subscription(SubscriptionStatus status) => StatusBadge(
+        label: status.label,
+        tone: switch (status) {
+          SubscriptionStatus.active => BadgeTone.success,
+          SubscriptionStatus.pending => BadgeTone.warning,
+          SubscriptionStatus.expired => BadgeTone.danger,
+          _ => BadgeTone.neutral,
         },
       );
 

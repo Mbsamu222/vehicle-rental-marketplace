@@ -20,4 +20,14 @@ class AppConfig {
     final isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     return "http://${isAndroid ? '10.0.2.2' : 'localhost'}:4000/api/v1";
   }
+
+  static const String _envPartnerWebUrl = String.fromEnvironment("PARTNER_WEB_URL");
+
+  /// Where "Become a partner" sends customers. Partner signup lives in the
+  /// partner web app (same as `PARTNER_WEB_URL` in
+  /// apps/public-site/src/screens/partner/BecomePartnerPage.tsx) — the customer
+  /// app can't create a partner account itself. Override with:
+  ///   flutter run --dart-define=PARTNER_WEB_URL=https://partners.example.com
+  static String get partnerWebUrl =>
+      _envPartnerWebUrl.isNotEmpty ? _envPartnerWebUrl : "http://localhost:5174";
 }

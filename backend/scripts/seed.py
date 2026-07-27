@@ -8,6 +8,7 @@ from app.core.firebase import create_user as create_firebase_user
 from app.db.enums import AccountStatus, UserType
 from app.db.models import (
     City,
+    CmsPage,
     Country,
     HeroBannerSlide,
     Permission,
@@ -20,6 +21,7 @@ from app.db.models import (
     VehicleCategory,
 )
 from app.db.session import AsyncSessionLocal
+from scripts.cms_content import CMS_PAGES
 
 PERMISSIONS = [
     {"key": "partners.view", "module": "partners", "description": "View rental partner profiles and documents"},
@@ -241,6 +243,19 @@ async def main() -> None:
                     features={"support": "priority", "listingBoost": True, "commissionOverride": 7, "analytics": True},
                 )
             )
+        await db.commit()
+
+        print("Seeding CMS legal pages...")
+        for page in CMS_PAGES:
+            existing = (
+                await db.execute(select(CmsPage).where(CmsPage.slug == page["slug"]))
+            ).scalar_one_or_none()
+            if existing is None:
+                db.add(CmsPage(slug=page["slug"], title=page["title"], content=page["content"]))
+            else:
+                # Leave existing rows alone: once published, these are edited
+                # through Admin -> Content, and a re-seed must not overwrite that.
+                print(f"  skipping {page['slug']} (already published)")
         await db.commit()
 
         print("Seed complete.")
