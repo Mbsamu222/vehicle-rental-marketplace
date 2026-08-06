@@ -39,7 +39,6 @@ import {
   Marquee,
   RevealOnScroll,
 } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 import { VehicleCard } from "@/components/VehicleCard";
 import { FaqAccordion } from "@/components/FaqAccordion";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
@@ -131,11 +130,6 @@ export function HomePage() {
 
   return (
     <div className="overflow-hidden bg-background text-primary antialiased dark:bg-dark-background dark:text-white">
-      <Seo
-        title="Rent vehicles from trusted local partners"
-        description="Search, compare, and book cars and bikes from verified local rental partners in Chennai."
-      />
-
       {/* SECTION 1: SEARCH WIDGET & HERO BANNER SLIDER */}
       <section className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8 lg:pt-12">
         <RevealOnScroll>

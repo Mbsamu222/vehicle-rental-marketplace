@@ -6,46 +6,51 @@ import type {
   AffiliatePartner,
   AuditLog,
   BankDetail,
+  BlogPost,
   Booking,
   BookingStatus,
   BusinessDocument,
   City,
   CmsPage,
-  Coupon,
   Country,
+  Coupon,
+  CouponType,
   DocumentStatus,
   DocumentType,
+  Driver,
+  DriverAssignment,
+  DriverVerificationStatus,
   DrivingLicense,
   DrivingLicenseStatus,
+  FuelType,
+  HeroBannerSlide,
+  MonetizationFeature,
+  MonetizationFeatureKey,
+  MonetizationStatus,
   Notification,
+  PartnerAnalytics,
+  PartnerSubscription,
   Payment,
+  PaymentProvider,
   Permission,
   RentalPartner,
   Review,
   Role,
   SavedLocation,
+  SeoSetting,
+  SubscriptionPlan,
   SupportTicket,
   SupportTicketMessage,
   Transaction,
+  UpsertSeoSettingInput,
   User,
+  UserType,
   Vehicle,
   VehicleBrand,
   VehicleCategory,
   VehicleImage,
-  Wallet,
-  BlogPost,
-  HeroBannerSlide,
-  CouponType,
-  FuelType,
-  MonetizationFeature,
-  MonetizationFeatureKey,
-  MonetizationStatus,
-  PartnerAnalytics,
-  PartnerSubscription,
-  PaymentProvider,
-  SubscriptionPlan,
-  UserType,
   VehicleTransmission,
+  Wallet,
 } from "./types";
 
 // ─── Auth ───
@@ -492,6 +497,14 @@ export const adminApi = {
   listAuditLogs: (params?: { entityType?: string; page?: number; limit?: number }) =>
     unwrapList<AuditLog>(http.get("/admin/audit-logs", { params })),
   getCmsPage: (slug: string) => unwrap<CmsPage>(http.get(`/admin/cms/${slug}`)),
+
+  // SEO overrides. `listSeoSettings` is intentionally an unauthenticated read —
+  // the public site calls the same endpoint during metadata generation.
+  listSeoSettings: () => unwrap<SeoSetting[]>(http.get("/admin/seo")),
+  upsertSeoSetting: (input: UpsertSeoSettingInput) => unwrap<SeoSetting>(http.put("/admin/seo", input)),
+  deleteSeoSetting: (id: string) => unwrap<{ deleted: boolean }>(http.delete(`/admin/seo/${id}`)),
+  updateVehicleSeo: (id: string, input: { seoTitle: string | null; seoDescription: string | null }) =>
+    unwrap<Vehicle>(http.patch(`/admin/vehicles/${id}/seo`, input)),
   upsertCmsPage: (input: { slug: string; title: string; content: string }) =>
     unwrap<CmsPage>(http.put("/admin/cms", input)),
   listBlogPosts: (params?: { page?: number; limit?: number }) =>
@@ -535,4 +548,29 @@ export const adminApi = {
   updateAffiliatePartner: (id: string, input: Partial<CreateAffiliatePartnerInput>) =>
     unwrap<AffiliatePartner>(http.patch(`/admin/affiliate-partners/${id}`, input)),
   deleteAffiliatePartner: (id: string) => unwrap<unknown>(http.delete(`/admin/affiliate-partners/${id}`)),
+};
+
+export const driversApi = {
+  /** Verified drivers free for the whole window, each with a price quote. */
+  available: (params: { cityId: string; pickup: string; returnAt: string }) =>
+    unwrap<Driver[]>(http.get("/drivers/available", { params })),
+
+  hire: (bookingId: string, driverId: string) =>
+    unwrap<DriverAssignment>(http.post(`/drivers/bookings/${bookingId}/request`, { driverId })),
+
+  // Driver's own surface
+  myProfile: () => unwrap<Driver>(http.get("/drivers/me")),
+  createProfile: (input: Record<string, unknown>) => unwrap<Driver>(http.post("/drivers/me", input)),
+  updateProfile: (input: Record<string, unknown>) => unwrap<Driver>(http.patch("/drivers/me", input)),
+  myStats: () => unwrap<{ completedTrips: number; pendingRequests: number; totalEarned: string }>(
+    http.get("/drivers/me/stats"),
+  ),
+  myAssignments: () => unwrap<DriverAssignment[]>(http.get("/drivers/me/assignments")),
+  respondToAssignment: (id: string, accept: boolean, declineReason?: string) =>
+    unwrap<DriverAssignment>(http.patch(`/drivers/me/assignments/${id}`, { accept, declineReason })),
+
+  // Admin
+  list: (status?: string) => unwrap<Driver[]>(http.get("/drivers", { params: status ? { status } : undefined })),
+  review: (id: string, status: DriverVerificationStatus, rejectionReason?: string) =>
+    unwrap<Driver>(http.patch(`/drivers/${id}/verification`, { status, rejectionReason })),
 };

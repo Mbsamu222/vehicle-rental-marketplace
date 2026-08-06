@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { MapPin, Phone, Mail } from "lucide-react";
 import { useBooking, useCancelBooking, useCancellationPreview, useCreateReview } from "@vrm/api-client";
+import { HireDriverCard } from "@/components/HireDriverCard";
 import { Badge, Button, Card, PageSpinner, BookingStatusTimeline, StarRating, Textarea, Modal, useToast } from "@vrm/ui";
 
 const CANCELLABLE = ["PENDING", "CONFIRMED", "APPROVED", "VEHICLE_READY"];
@@ -73,6 +74,8 @@ export function BookingDetailPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-5 lg:col-span-2">
+          <HireDriverCard booking={booking} />
+
           <Card className="p-5">
             <h3 className="mb-4 font-heading font-semibold">Rental status</h3>
             <BookingStatusTimeline status={booking.status} history={booking.statusHistory} />

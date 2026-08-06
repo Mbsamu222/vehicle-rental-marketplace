@@ -2,7 +2,6 @@
 
 import { TrendingUp, LayoutGrid, Users2, ShieldCheck, Clock, ArrowRight, Star } from "lucide-react";
 import { Button, Card, Eyebrow, GradientMesh, Marquee, RevealOnScroll, StarRating, Avatar } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 
 const PARTNER_WEB_URL = "http://localhost:5174";
 
@@ -49,11 +48,6 @@ const heroStats = [
 export function BecomePartnerPage() {
   return (
     <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
-      <Seo
-        title="Become a Rental Partner"
-        description="List your vehicles on RentWheels and reach more renters. Free to join, easy to manage."
-      />
-
       {/* Hero */}
       <section className="relative overflow-hidden bg-primary text-white dark:bg-dark-surface">
         <GradientMesh variant="dark" />

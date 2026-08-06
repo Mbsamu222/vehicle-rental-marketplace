@@ -3,7 +3,6 @@
 import { FileText } from "lucide-react";
 import { useCmsPage } from "@vrm/api-client";
 import { EmptyState, PageSpinner, RevealOnScroll } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 import { PageHero } from "@/components/PageHero";
 
 /**
@@ -17,7 +16,6 @@ export function CmsPage({ slug, title }: { slug: string; title: string }) {
 
   return (
     <div>
-      <Seo title={title} description={`${title} for RentWheels.`} />
       <PageHero eyebrow="Legal" title={title} size="sm" />
 
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">

@@ -6,7 +6,6 @@ import { ArrowLeft, FileQuestion, ImageOff, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { useBlogPost } from "@vrm/api-client";
 import { EmptyState, PageSpinner, Button, RevealOnScroll } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 
 export function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -17,7 +16,6 @@ export function BlogDetailPage() {
   if (isError || !post) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-24 sm:px-6 lg:px-8">
-        <Seo title="Post not found" />
         <EmptyState
           icon={<FileQuestion size={26} />}
           title="Post not found"
@@ -34,8 +32,6 @@ export function BlogDetailPage() {
 
   return (
     <article>
-      <Seo title={post.title} description={post.excerpt ?? undefined} />
-
       {/* Full-bleed cover */}
       <div className="relative aspect-[21/9] w-full overflow-hidden bg-primary dark:bg-dark-surface">
         {post.coverImageUrl ? (

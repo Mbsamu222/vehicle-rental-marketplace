@@ -2,15 +2,12 @@
 
 import { Briefcase, MapPin, Clock, ArrowRight, Mail } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Eyebrow, GradientMesh, RevealOnScroll } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 import { PageHero } from "@/components/PageHero";
 import { openPositions } from "@/data/marketingContent";
 
 export function CareersPage() {
   return (
     <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
-      <Seo title="Careers" description="Join the RentWheels team — open positions and what it's like to work here." />
-
       <PageHero
         eyebrow="We're Hiring"
         title="Careers at RentWheels"

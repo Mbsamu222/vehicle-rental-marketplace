@@ -221,6 +221,9 @@ export interface Booking {
   securityDeposit: string;
   serviceFeeAmount: string;
   extraDriverFeeAmount: string;
+  /** Chauffeur-driven booking (a hired driver, not an extra declared driver). */
+  withDriver: boolean;
+  driverFeeAmount: string;
   youngDriverFeeAmount: string;
   extraDriverCount: number;
   isYoungDriver: boolean;
@@ -511,3 +514,64 @@ export interface ApiErrorShape {
   message: string;
   errors?: Record<string, string[]>;
 }
+
+/** Admin-editable meta tags for one public route. Null fields fall back to the
+ * value the public site computes in code. */
+export type SeoSetting = {
+  id: string;
+  path: string;
+  title: string | null;
+  description: string | null;
+  keywords: string | null;
+  ogImageUrl: string | null;
+  noIndex: boolean;
+  updatedAt: string;
+};
+
+export type UpsertSeoSettingInput = {
+  path: string;
+  title?: string | null;
+  description?: string | null;
+  keywords?: string | null;
+  ogImageUrl?: string | null;
+  noIndex?: boolean;
+};
+
+export type DriverVerificationStatus = "PENDING" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED" | "SUSPENDED";
+export type DriverAssignmentStatus = "REQUESTED" | "ACCEPTED" | "DECLINED" | "CANCELLED" | "COMPLETED";
+
+export type Driver = {
+  id: string;
+  userId: string;
+  cityId: string;
+  licenseNumber: string;
+  licenseExpiry: string;
+  yearsOfExperience: number;
+  dailyRate: string;
+  hourlyRate: string;
+  bio: string | null;
+  photoUrl: string | null;
+  languages: string | null;
+  verificationStatus: DriverVerificationStatus;
+  rejectionReason: string | null;
+  isAvailable: boolean;
+  averageRating: string;
+  totalTrips: number;
+  totalReviews: number;
+  /** Present only on the availability search — price for the requested window. */
+  quotedAmount?: string;
+  user?: User;
+  city?: City;
+};
+
+export type DriverAssignment = {
+  id: string;
+  bookingId: string;
+  driverId: string;
+  status: DriverAssignmentStatus;
+  agreedAmount: string;
+  declineReason: string | null;
+  respondedAt: string | null;
+  createdAt: string;
+  booking?: Booking;
+};

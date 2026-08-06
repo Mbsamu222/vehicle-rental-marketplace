@@ -3,14 +3,11 @@
 import { Link } from "@vrm/ui";
 import { MessageCircleQuestion, Mail, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button, Card, RevealOnScroll } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 import { PageHero } from "@/components/PageHero";
 
 export function SupportPage() {
   return (
     <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
-      <Seo title="Support" description="Get help with your RentWheels booking or account." />
-
       <PageHero
         eyebrow="Customer Support"
         title="We're Here to Help"

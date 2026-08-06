@@ -4,7 +4,6 @@ import { Link } from "@vrm/ui";
 import { MapPin, ImageOff, ArrowRight } from "lucide-react";
 import { useCities } from "@vrm/api-client";
 import { Card, EmptyState, SkeletonCard, RevealOnScroll } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 import { PageHero } from "@/components/PageHero";
 
 export function CitiesPage() {
@@ -12,8 +11,6 @@ export function CitiesPage() {
 
   return (
     <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
-      <Seo title="Where We Operate" description="RentWheels is live in Chennai, with more cities on the roadmap." />
-
       <PageHero
         eyebrow="Marketplace Hubs"
         title="Where We Operate"

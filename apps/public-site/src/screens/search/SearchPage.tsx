@@ -13,7 +13,6 @@ import {
   type VehicleSearchParams,
 } from "@vrm/api-client";
 import { Select, Input, Card, EmptyState, SkeletonCard, Pagination } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 import { VehicleCard } from "@/components/VehicleCard";
 import { PageHero } from "@/components/PageHero";
 
@@ -33,8 +32,6 @@ export function SearchPage() {
 
   return (
     <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
-      <Seo title="Search Vehicles" description="Search across every rental partner on RentWheels." />
-
       <PageHero
         eyebrow="Marketplace Search"
         title="Find Your Perfect Ride"

@@ -3,14 +3,15 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "public-site",
+    "partner-web",
+    "admin-web"
   ],
   "scripts": {
-    "dev:backend": "npm --prefix backend run dev",
     "dev:public": "npm run dev --workspace @vrm/public-site",
     "dev:partner": "npm run dev --workspace @vrm/partner-web",
     "dev:admin": "npm run dev --workspace @vrm/admin-web",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "build:apps": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present"
   }
 }

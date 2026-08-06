@@ -4,7 +4,6 @@ import { Link } from "@vrm/ui";
 import { LayoutGrid, ArrowRight } from "lucide-react";
 import { useVehicleCategories } from "@vrm/api-client";
 import { Card, EmptyState, SkeletonCard, RevealOnScroll } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 import { PageHero } from "@/components/PageHero";
 import { getCategoryIcon, getCategoryColorStyle } from "@/utils/categoryIcons";
 
@@ -13,8 +12,6 @@ export function CategoriesPage() {
 
   return (
     <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
-      <Seo title="Vehicle Categories" description="Browse all vehicle categories available to rent on RentWheels." />
-
       <PageHero
         eyebrow="Browse Fleet"
         title="Vehicle Categories"

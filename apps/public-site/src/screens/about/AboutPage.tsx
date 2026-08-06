@@ -2,7 +2,6 @@
 
 import { Target, Users, Globe, Heart } from "lucide-react";
 import { Card, Eyebrow, RevealOnScroll } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 import { PageHero } from "@/components/PageHero";
 
 const values = [
@@ -39,11 +38,6 @@ const storyParagraphs = [
 export function AboutPage() {
   return (
     <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
-      <Seo
-        title="About Us"
-        description="Learn about RentWheels' mission to connect renters with trusted local vehicle rental partners."
-      />
-
       <PageHero
         eyebrow="About RentWheels"
         title="Renting a vehicle, reimagined"

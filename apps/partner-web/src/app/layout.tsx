@@ -4,6 +4,9 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  // Wholly behind auth: nothing here should ever appear in a search
+  // index. robots.ts additionally disallows all crawling.
+  robots: { index: false, follow: false, nocache: true },
   title: "RentWheels Partner — Manage your fleet",
   description: "Manage your vehicle listings, bookings, and business profile on RentWheels.",
 };

@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Mail, Phone, MapPin, CheckCircle2, Send, Clock } from "lucide-react";
 import { Button, Input, Textarea, Eyebrow, GradientMesh, RevealOnScroll } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 
 const contactSchema = z.object({
   name: z.string().min(2, "Enter your full name"),
@@ -40,8 +39,6 @@ export function ContactPage() {
 
   return (
     <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
-      <Seo title="Contact Us" description="Get in touch with the RentWheels support & marketplace team." />
-
       <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[calc(100vh-80px)]">
         {/* Info panel */}
         <div className="relative flex items-center overflow-hidden bg-primary px-6 py-20 text-white dark:bg-dark-surface sm:px-10 lg:px-16 lg:py-28">

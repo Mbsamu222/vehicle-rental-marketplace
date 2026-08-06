@@ -5,7 +5,6 @@ import { Newspaper, ImageOff, ArrowRight, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { useBlogPosts } from "@vrm/api-client";
 import { Card, EmptyState, SkeletonCard, RevealOnScroll } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 import { PageHero } from "@/components/PageHero";
 
 export function BlogListPage() {
@@ -13,8 +12,6 @@ export function BlogListPage() {
 
   return (
     <div>
-      <Seo title="Blog" description="Tips, city guides, and updates from the RentWheels team." />
-
       <PageHero eyebrow="Journal" title="The RentWheels Blog" description="Rental tips, city guides, and product updates." size="sm" />
 
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">

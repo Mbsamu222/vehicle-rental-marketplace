@@ -13,7 +13,6 @@ import {
   useToggleWishlist,
 } from "@vrm/api-client";
 import { Badge, Button, Card, DateRangeFields, PageSpinner, StarRating, ImageGallery, Avatar, EmptyState } from "@vrm/ui";
-import { Seo } from "@/components/Seo";
 
 export function VehicleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,7 +35,6 @@ export function VehicleDetailPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <Seo title={`${vehicle.brand?.name ?? ""} ${vehicle.model}`.trim()} description={`Rent the ${vehicle.model} from a verified RentWheels partner.`} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <ImageGallery images={(vehicle.images ?? []).map((i) => i.url)} alt={vehicle.model} />

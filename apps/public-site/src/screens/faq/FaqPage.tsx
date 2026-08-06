@@ -3,15 +3,12 @@
 import { Link } from "@vrm/ui";
 import { RevealOnScroll, Card } from "@vrm/ui";
 import { FaqAccordion } from "@/components/FaqAccordion";
-import { Seo } from "@/components/Seo";
 import { PageHero } from "@/components/PageHero";
 import { faqItems } from "@/data/marketingContent";
 
 export function FaqPage() {
   return (
     <div className="bg-background text-primary antialiased dark:bg-dark-background dark:text-white min-h-screen">
-      <Seo title="Frequently Asked Questions" description="Answers to common questions about renting on RentWheels." />
-
       <PageHero
         eyebrow="Help & FAQ"
         title="Frequently Asked Questions"
