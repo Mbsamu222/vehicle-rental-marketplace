@@ -2,11 +2,13 @@ import math
 import secrets
 import time
 from datetime import datetime, timezone
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.money import round_money
+from app.core.datetimes import ensure_aware
 from app.core.responses import ApiError
 from app.db.enums import (
     BookingStatus,
@@ -59,16 +61,8 @@ def _generate_booking_number() -> str:
     return f"BK-{timestamp}-{rand}"
 
 
-def _round2(value: Decimal) -> Decimal:
-    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def _ensure_aware(dt: datetime) -> datetime:
-    """SQLAlchemy's asyncpg driver always returns tz-aware datetimes for
-    `DateTime(timezone=True)` columns, but not every dialect does (SQLite, used
-    in tests, hands back naive datetimes on read) — normalize to UTC so date
-    arithmetic against a freshly-constructed aware datetime never raises."""
-    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 
 def _fee_amount(config: dict, base_price: Decimal) -> Decimal:
@@ -79,7 +73,7 @@ def _fee_amount(config: dict, base_price: Decimal) -> Decimal:
     cap = config.get("cap")
     if cap is not None:
         amount = min(amount, Decimal(str(cap)))
-    return _round2(max(amount, Decimal("0")))
+    return round_money(max(amount, Decimal("0")))
 
 
 async def get_booking_fee_config(db: AsyncSession) -> dict:
@@ -126,7 +120,7 @@ def calculate_price(
         discount_amount = min(discount_amount, base_price)
 
     taxable_amount = base_price - discount_amount
-    tax_amount = _round2(taxable_amount * TAX_RATE)
+    tax_amount = round_money(taxable_amount * TAX_RATE)
 
     # Convenience fees/surcharges are neither discountable nor taxed — they're
     # platform charges layered on top of the rental price itself, same
@@ -134,23 +128,23 @@ def calculate_price(
     fee_config = fee_config or {}
     service_fee_amount = _fee_amount(fee_config["serviceFee"], base_price) if fee_config.get("serviceFee") else Decimal("0")
     extra_driver_fee_amount = (
-        _round2(Decimal(str(fee_config["extraDriverFee"]["perDriverFlat"])) * extra_driver_count)
+        round_money(Decimal(str(fee_config["extraDriverFee"]["perDriverFlat"])) * extra_driver_count)
         if fee_config.get("extraDriverFee") and extra_driver_count > 0
         else Decimal("0")
     )
     young_driver_fee_amount = (
-        _round2(Decimal(str(fee_config["youngDriverFee"]["flat"])))
+        round_money(Decimal(str(fee_config["youngDriverFee"]["flat"])))
         if fee_config.get("youngDriverFee") and is_young_driver
         else Decimal("0")
     )
 
-    total_amount = _round2(
+    total_amount = round_money(
         taxable_amount + tax_amount + security_deposit + service_fee_amount + extra_driver_fee_amount + young_driver_fee_amount
     )
 
     return {
-        "base_price": _round2(base_price),
-        "discount_amount": _round2(discount_amount),
+        "base_price": round_money(base_price),
+        "discount_amount": round_money(discount_amount),
         "tax_amount": tax_amount,
         "security_deposit": security_deposit,
         "service_fee_amount": service_fee_amount,
@@ -274,11 +268,11 @@ async def _record_late_return_fee(db: AsyncSession, booking: Booking, actual_ret
     per_hour = Decimal(str(config.get("perHourAmount", 0)))
     max_amount = config.get("maxAmount")
 
-    late_minutes = (_ensure_aware(actual_return_at) - _ensure_aware(booking.return_datetime)).total_seconds() / 60 - grace_minutes
+    late_minutes = (ensure_aware(actual_return_at) - ensure_aware(booking.return_datetime)).total_seconds() / 60 - grace_minutes
     if late_minutes <= 0:
         return
 
-    fee = _round2(Decimal(late_minutes / 60) * per_hour)
+    fee = round_money(Decimal(late_minutes / 60) * per_hour)
     if max_amount is not None:
         fee = min(fee, Decimal(str(max_amount)))
     if fee <= 0:
@@ -349,7 +343,7 @@ def calculate_cancellation_fee(*, taxable_amount: Decimal, hours_before_pickup: 
         return Decimal("0")
     best = max(applicable, key=lambda t: t["hoursBeforePickup"])
     fee_percentage = Decimal(str(best["feePercentage"]))
-    return _round2(taxable_amount * fee_percentage / Decimal(100))
+    return round_money(taxable_amount * fee_percentage / Decimal(100))
 
 
 async def _compute_cancellation_fee_for_booking(db: AsyncSession, booking: Booking) -> Decimal:
@@ -357,7 +351,7 @@ async def _compute_cancellation_fee_for_booking(db: AsyncSession, booking: Booki
         return Decimal("0")
     config = await monetization_service.get_config(db, MonetizationFeatureKey.CANCELLATION_FEE)
     now = datetime.now(timezone.utc)
-    hours_before_pickup = max(0.0, (_ensure_aware(booking.pickup_datetime) - now).total_seconds() / 3600)
+    hours_before_pickup = max(0.0, (ensure_aware(booking.pickup_datetime) - now).total_seconds() / 3600)
     taxable_amount = booking.base_price - booking.discount_amount
     return calculate_cancellation_fee(
         taxable_amount=taxable_amount, hours_before_pickup=hours_before_pickup, tiers=config.get("tiers", [])

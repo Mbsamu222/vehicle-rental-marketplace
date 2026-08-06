@@ -124,3 +124,20 @@ class UpdateAffiliatePartnerInput(BaseModel):
     logoUrl: str | None = None
     sortOrder: int | None = None
     isActive: bool | None = None
+
+
+class UpsertSeoSettingInput(BaseModel):
+    """All meta fields are optional: an unset field means "fall back to the
+    value the site computes in code", not "blank this tag out"."""
+
+    path: str = Field(min_length=1, max_length=200)
+    title: str | None = Field(default=None, max_length=200)
+    description: str | None = Field(default=None, max_length=400)
+    keywords: str | None = Field(default=None, max_length=1000)
+    ogImageUrl: str | None = None
+    noIndex: bool = False
+
+
+class UpdateVehicleSeoInput(BaseModel):
+    seoTitle: str | None = Field(default=None, max_length=200)
+    seoDescription: str | None = Field(default=None, max_length=400)

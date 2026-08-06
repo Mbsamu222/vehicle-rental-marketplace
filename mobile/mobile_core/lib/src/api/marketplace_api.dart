@@ -4,6 +4,7 @@ import 'endpoints/auth_api.dart';
 import 'endpoints/bookings_api.dart';
 import 'endpoints/catalog_api.dart';
 import 'endpoints/coupons_api.dart';
+import 'endpoints/drivers_api.dart';
 import 'endpoints/notifications_api.dart';
 import 'endpoints/payments_api.dart';
 import 'endpoints/rental_partners_api.dart';
@@ -27,6 +28,7 @@ class MarketplaceApi {
   late final ReviewsApi reviews = ReviewsApi(client);
   late final NotificationsApi notifications = NotificationsApi(client);
   late final CouponsApi coupons = CouponsApi(client);
+  late final DriversApi drivers = DriversApi(client);
   late final SubscriptionsApi subscriptions = SubscriptionsApi(client);
   late final SupportApi support = SupportApi(client);
   late final AdminApi admin = AdminApi(client);

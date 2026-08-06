@@ -6,3 +6,9 @@ __pycache__/
 
 # Keep environment variables out of version control
 .env
+
+# Firebase CLI emulator logs
+firebase-debug.log
+ui-debug.log
+.firebase/
+.firebase-emulator.json

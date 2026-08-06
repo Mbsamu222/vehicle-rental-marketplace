@@ -18,6 +18,7 @@ import 'screens/auth/login_page.dart';
 import 'screens/auth/register_page.dart';
 import 'screens/booking/booking_checkout_page.dart';
 import 'screens/booking/booking_detail_page.dart';
+import 'screens/booking/hire_driver_page.dart';
 import 'screens/booking/my_bookings_page.dart';
 import 'screens/home/home_page.dart';
 import 'screens/info/about_page.dart';
@@ -114,6 +115,10 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: "/bookings/:id",
         builder: (context, state) => BookingDetailPage(bookingId: state.pathParameters["id"]!),
+      ),
+      GoRoute(
+        path: "/bookings/:id/hire-driver",
+        builder: (context, state) => HireDriverPage(bookingId: state.pathParameters["id"]!),
       ),
       GoRoute(path: "/account/edit", builder: (context, state) => const EditProfilePage()),
       GoRoute(path: "/account/wallet", builder: (context, state) => const WalletPage()),

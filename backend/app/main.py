@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 import socketio
@@ -14,8 +15,34 @@ from app.core.rate_limit import limiter
 API_PREFIX = "/api/v1"
 
 
+logger = logging.getLogger(__name__)
+
+
+def _validate_firebase_configuration() -> None:
+    """Fails fast in production, warns in development.
+
+    A missing credential means every authenticated request 500s. In production
+    that must stop the deploy; locally it must NOT block running the app or the
+    test suite, since plenty of work (catalog, pricing, migrations) needs no
+    Firebase at all.
+    """
+    from app.core.firebase import FirebaseNotConfiguredError, check_configuration
+
+    try:
+        source = check_configuration()
+    except FirebaseNotConfiguredError as exc:
+        if settings.is_production:
+            raise
+        logger.warning("%s", exc)
+        logger.warning("Continuing without Firebase — authenticated endpoints will fail.")
+        return
+    logger.info("Firebase Admin credential source: %s", source)
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Vehicle Rental Marketplace API")
+
+    _validate_firebase_configuration()
 
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
@@ -53,8 +80,10 @@ def _rate_limit_handler(request, exc):
 def _mount_routers(app: FastAPI) -> None:
     from app.modules.admin.router import router as admin_router
     from app.modules.auth.router import router as auth_router
+    from app.modules.bookings.handover_router import router as bookings_handover_router
     from app.modules.bookings.router import router as bookings_router
     from app.modules.catalog.router import router as catalog_router
+    from app.modules.drivers.router import router as drivers_router
     from app.modules.coupons.router import router as coupons_router
     from app.modules.monetization.router import router as monetization_router
     from app.modules.notifications.router import router as notifications_router
@@ -73,6 +102,9 @@ def _mount_routers(app: FastAPI) -> None:
     app.include_router(rental_partners_router, prefix=f"{API_PREFIX}/rental-partners", tags=["rental-partners"])
     app.include_router(vehicles_router, prefix=f"{API_PREFIX}/vehicles", tags=["vehicles"])
     app.include_router(bookings_router, prefix=f"{API_PREFIX}/bookings", tags=["bookings"])
+    # Inspections, extensions, and traffic fines — same prefix, separate module.
+    app.include_router(bookings_handover_router, prefix=f"{API_PREFIX}/bookings", tags=["bookings"])
+    app.include_router(drivers_router, prefix=f"{API_PREFIX}/drivers", tags=["drivers"])
     app.include_router(payments_router, prefix=f"{API_PREFIX}/payments", tags=["payments"])
     app.include_router(payouts_router, prefix=f"{API_PREFIX}/payouts", tags=["payouts"])
     app.include_router(monetization_router, prefix=f"{API_PREFIX}/monetization", tags=["monetization"])

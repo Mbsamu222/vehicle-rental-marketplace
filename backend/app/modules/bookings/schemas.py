@@ -34,3 +34,59 @@ class UpdateStatusInput(BaseModel):
     status: UpdatableBookingStatus
     note: str | None = Field(default=None, max_length=500)
     actualReturnAt: datetime | None = None
+
+
+# ── Handover / return inspections ────────────────────────────────────────
+
+InspectionTypeInput = Literal["PICKUP", "RETURN"]
+FuelLevelInput = Literal["EMPTY", "QUARTER", "HALF", "THREE_QUARTER", "FULL"]
+
+
+class InspectionPhotoInput(BaseModel):
+    url: str = Field(min_length=1)
+    # Which angle was shot, so a RETURN photo can be compared against the same
+    # angle from PICKUP: front, rear, left, right, interior, odometer, damage.
+    label: str | None = Field(default=None, max_length=40)
+
+
+class CreateInspectionInput(BaseModel):
+    type: InspectionTypeInput
+    odometerKm: int = Field(ge=0, le=10_000_000)
+    fuelLevel: FuelLevelInput
+    exteriorNotes: str | None = Field(default=None, max_length=2000)
+    interiorNotes: str | None = Field(default=None, max_length=2000)
+    damageNotes: str | None = Field(default=None, max_length=2000)
+    customerAcknowledged: bool = False
+    photos: list[InspectionPhotoInput] = Field(default_factory=list, max_length=20)
+
+
+# ── Booking extensions ───────────────────────────────────────────────────
+
+
+class RequestExtensionInput(BaseModel):
+    requestedReturnDatetime: datetime
+
+
+class DecideExtensionInput(BaseModel):
+    approve: bool
+    rejectionReason: str | None = Field(default=None, max_length=500)
+
+
+# ── Traffic fines ────────────────────────────────────────────────────────
+
+TrafficFineStatusInput = Literal[
+    "PENDING", "NOTIFIED", "PAID_BY_CUSTOMER", "DEDUCTED_FROM_DEPOSIT", "WAIVED", "DISPUTED"
+]
+
+
+class CreateTrafficFineInput(BaseModel):
+    bookingId: str
+    violationAt: datetime
+    amount: float = Field(gt=0)
+    challanNumber: str | None = Field(default=None, max_length=64)
+    description: str | None = Field(default=None, max_length=1000)
+    evidenceUrl: str | None = None
+
+
+class UpdateTrafficFineStatusInput(BaseModel):
+    status: TrafficFineStatusInput

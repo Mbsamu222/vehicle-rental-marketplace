@@ -11,7 +11,22 @@ class Settings(BaseSettings):
 
     database_url: str
 
-    firebase_service_account_b64: str
+    # Base64 service-account JSON. Optional so the app can also run against the
+    # Firebase Auth emulator, or on GCP via Application Default Credentials,
+    # neither of which needs a key checked into an env file.
+    firebase_service_account_b64: str = ""
+
+    # Path to a service-account JSON on disk. Alternative to the base64 form —
+    # preferred on hosts that mount secrets as files (Cloud Run, k8s).
+    google_application_credentials: str = ""
+
+    # e.g. "localhost:9099". When set, the Admin SDK talks to the local emulator
+    # and no real credential is required at all.
+    firebase_auth_emulator_host: str = ""
+
+    # Only needed alongside the emulator, which requires *a* project id but
+    # does not validate it.
+    firebase_project_id: str = ""
 
     cors_origin: str = "http://localhost:5173"
 
@@ -32,6 +47,27 @@ class Settings(BaseSettings):
     s3_endpoint: str = ""
 
     google_maps_api_key: str = ""
+
+    @property
+    def firebase_credential_source(self) -> str:
+        """Which Firebase credential mechanism is configured, in precedence order.
+
+        Returns one of: "emulator", "file", "base64", "adc", "none".
+        `verify_id_token` is meaningless without one of the first four, so this is
+        checked at startup rather than on the first authenticated request.
+        """
+        if self.firebase_auth_emulator_host:
+            return "emulator"
+        if self.google_application_credentials:
+            return "file"
+        # `e30=` is base64 for `{}` — treat the documented placeholder as absent
+        # so it can't masquerade as real configuration.
+        if self.firebase_service_account_b64 and self.firebase_service_account_b64 != "e30=":
+            return "base64"
+        if self.is_production:
+            # On GCP the metadata server supplies credentials implicitly.
+            return "adc"
+        return "none"
 
     @property
     def is_production(self) -> bool:

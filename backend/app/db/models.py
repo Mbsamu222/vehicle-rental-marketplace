@@ -15,8 +15,14 @@ from app.db.enums import (
     CouponType,
     DocumentStatus,
     DocumentType,
+    DriverAssignmentStatus,
+    DriverDocumentType,
+    DriverVerificationStatus,
     DrivingLicenseStatus,
+    ExtensionStatus,
+    FuelLevel,
     FuelType,
+    InspectionType,
     MonetizationFeatureKey,
     NotificationChannel,
     PartnerVerificationStatus,
@@ -24,6 +30,7 @@ from app.db.enums import (
     PaymentStatus,
     SubscriptionStatus,
     SupportTicketStatus,
+    TrafficFineStatus,
     TransactionStatus,
     TransactionType,
     UserType,
@@ -327,6 +334,9 @@ class Vehicle(Base):
     security_deposit: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     insurance_details: Mapped[str | None] = mapped_column(Text)
     rental_policies: Mapped[str | None] = mapped_column(Text)
+    # Per-listing SEO overrides. NULL means 'derive from brand/model/city/price'.
+    seo_title: Mapped[str | None] = mapped_column(String(200))
+    seo_description: Mapped[str | None] = mapped_column(String(400))
     latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
     longitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
     approval_status: Mapped[VehicleApprovalStatus] = mapped_column(
@@ -514,6 +524,9 @@ class Booking(Base):
     extra_driver_fee_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     young_driver_fee_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     extra_driver_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Chauffeur-driven booking: the customer hires a driver alongside the vehicle.
+    with_driver: Mapped[bool] = mapped_column(Boolean, default=False)
+    driver_fee_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     is_young_driver: Mapped[bool] = mapped_column(Boolean, default=False)
     status: Mapped[BookingStatus] = mapped_column(SAEnum(BookingStatus, name="booking_status"), default=BookingStatus.PENDING, index=True)
     cancellation_reason: Mapped[str | None] = mapped_column(Text)
@@ -532,6 +545,10 @@ class Booking(Base):
     payout_transaction: Mapped["Transaction | None"] = relationship(foreign_keys=[payout_transaction_id])
 
     status_history: Mapped[list["BookingStatusHistory"]] = relationship(back_populates="booking", cascade="all, delete-orphan")
+    inspections: Mapped[list["BookingInspection"]] = relationship(back_populates="booking", cascade="all, delete-orphan")
+    extensions: Mapped[list["BookingExtension"]] = relationship(back_populates="booking", cascade="all, delete-orphan")
+    traffic_fines: Mapped[list["TrafficFine"]] = relationship(back_populates="booking")
+    driver_assignments: Mapped[list["DriverAssignment"]] = relationship(back_populates="booking", cascade="all, delete-orphan")
     payments: Mapped[list["Payment"]] = relationship(back_populates="booking")
     invoice: Mapped["Invoice | None"] = relationship(back_populates="booking")
     review: Mapped["Review | None"] = relationship(back_populates="booking")
@@ -548,6 +565,210 @@ class BookingStatusHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     booking: Mapped["Booking"] = relationship(back_populates="status_history")
+
+
+class BookingInspection(Base):
+    """Condition report captured at handover and at return.
+
+    This is what makes a security-deposit deduction defensible: without an
+    odometer/fuel reading and photographs from BOTH ends of the rental, a
+    "damage" claim is one party's word against the other's. The Refund Policy
+    promises itemised, evidenced deductions — this table is what backs it.
+
+    One row per (booking, type), so a pickup report can't be silently replaced
+    by a second one after the fact.
+    """
+
+    __tablename__ = "booking_inspections"
+    __table_args__ = (UniqueConstraint("booking_id", "type", name="uq_inspection_booking_type"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    booking_id: Mapped[str] = mapped_column(String(36), ForeignKey("bookings.id", ondelete="CASCADE"), index=True)
+    type: Mapped[InspectionType] = mapped_column(SAEnum(InspectionType, name="inspection_type"))
+    odometer_km: Mapped[int] = mapped_column(Integer)
+    fuel_level: Mapped[FuelLevel] = mapped_column(SAEnum(FuelLevel, name="fuel_level"))
+    exterior_notes: Mapped[str | None] = mapped_column(Text)
+    interior_notes: Mapped[str | None] = mapped_column(Text)
+    damage_notes: Mapped[str | None] = mapped_column(Text)
+    # Signed off by the customer on the partner's device at handover.
+    customer_acknowledged: Mapped[bool] = mapped_column(Boolean, default=False)
+    recorded_by_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    booking: Mapped["Booking"] = relationship(back_populates="inspections")
+    photos: Mapped[list["InspectionPhoto"]] = relationship(
+        back_populates="inspection", cascade="all, delete-orphan"
+    )
+
+
+class InspectionPhoto(Base):
+    """Evidence attached to a [BookingInspection]. `label` records which angle
+    was shot (front, rear, left, right, interior, odometer, damage) so a return
+    photo can be compared against the same angle from pickup."""
+
+    __tablename__ = "inspection_photos"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    inspection_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("booking_inspections.id", ondelete="CASCADE"), index=True
+    )
+    url: Mapped[str] = mapped_column(String)
+    label: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    inspection: Mapped["BookingInspection"] = relationship(back_populates="photos")
+
+
+class BookingExtension(Base):
+    """A request to push a booking's return time later.
+
+    Modelled as a request/approval rather than a direct mutation of
+    `Booking.return_datetime` because the vehicle may already be booked by
+    someone else for that window, and because the additional charge has to be
+    paid before the extension takes effect.
+    """
+
+    __tablename__ = "booking_extensions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    booking_id: Mapped[str] = mapped_column(String(36), ForeignKey("bookings.id", ondelete="CASCADE"), index=True)
+    requested_return_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    previous_return_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    additional_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    status: Mapped[ExtensionStatus] = mapped_column(
+        SAEnum(ExtensionStatus, name="extension_status"), default=ExtensionStatus.PENDING, index=True
+    )
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+    payment_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("payments.id"))
+    decided_by_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    booking: Mapped["Booking"] = relationship(back_populates="extensions")
+
+
+class TrafficFine(Base):
+    """A challan attributed to a booking, often arriving weeks after return.
+
+    The Terms make the renter responsible for fines incurred during their
+    rental period "including those that arrive after the rental ends" — this is
+    the record that makes that clause enforceable and auditable.
+    """
+
+    __tablename__ = "traffic_fines"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    booking_id: Mapped[str] = mapped_column(String(36), ForeignKey("bookings.id"), index=True)
+    challan_number: Mapped[str | None] = mapped_column(String, index=True)
+    violation_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    description: Mapped[str | None] = mapped_column(Text)
+    evidence_url: Mapped[str | None] = mapped_column(String)
+    status: Mapped[TrafficFineStatus] = mapped_column(
+        SAEnum(TrafficFineStatus, name="traffic_fine_status"), default=TrafficFineStatus.PENDING, index=True
+    )
+    recorded_by_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    booking: Mapped["Booking"] = relationship(back_populates="traffic_fines")
+# ──────────────────────────────────────────────
+# DRIVERS (chauffeur-driven bookings)
+# ──────────────────────────────────────────────
+
+
+class Driver(Base):
+    """A hireable chauffeur.
+
+    Separate from RentalPartner: a partner owns vehicles, a driver sells labour.
+    A driver is not tied to one partner — any booking in their city can hire
+    them, which is why there is no rental_partner_id here.
+    """
+
+    __tablename__ = "drivers"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), unique=True)
+    city_id: Mapped[str] = mapped_column(String(36), ForeignKey("cities.id"), index=True)
+    license_number: Mapped[str] = mapped_column(String, unique=True)
+    license_expiry: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    years_of_experience: Mapped[int] = mapped_column(Integer, default=0)
+    # Priced per day and per hour like a vehicle, so a chauffeur-driven booking
+    # can reuse the same duration maths as the rental itself.
+    daily_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    hourly_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    bio: Mapped[str | None] = mapped_column(Text)
+    photo_url: Mapped[str | None] = mapped_column(String)
+    languages: Mapped[str | None] = mapped_column(String)
+    verification_status: Mapped[DriverVerificationStatus] = mapped_column(
+        SAEnum(DriverVerificationStatus, name="driver_verification_status"),
+        default=DriverVerificationStatus.PENDING,
+        index=True,
+    )
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+    # Driver's own switch — distinct from verification. A verified driver can
+    # still mark themselves unavailable without losing their approved status.
+    is_available: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    average_rating: Mapped[Decimal] = mapped_column(Numeric(3, 2), default=Decimal("0"))
+    total_trips: Mapped[int] = mapped_column(Integer, default=0)
+    total_reviews: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user: Mapped["User"] = relationship()
+    city: Mapped["City"] = relationship()
+    documents: Mapped[list["DriverDocument"]] = relationship(back_populates="driver", cascade="all, delete-orphan")
+    assignments: Mapped[list["DriverAssignment"]] = relationship(back_populates="driver")
+
+
+class DriverDocument(Base):
+    """KYC for a driver — same review flow as BusinessDocument for partners."""
+
+    __tablename__ = "driver_documents"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    driver_id: Mapped[str] = mapped_column(String(36), ForeignKey("drivers.id", ondelete="CASCADE"), index=True)
+    type: Mapped[DriverDocumentType] = mapped_column(SAEnum(DriverDocumentType, name="driver_document_type"))
+    file_url: Mapped[str] = mapped_column(String)
+    status: Mapped[DocumentStatus] = mapped_column(
+        SAEnum(DocumentStatus, name="document_status"), default=DocumentStatus.PENDING
+    )
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    driver: Mapped["Driver"] = relationship(back_populates="documents")
+
+
+class DriverAssignment(Base):
+    """Links a driver to a booking.
+
+    Modelled as request/accept rather than a plain FK on Booking because the
+    driver must agree, and because a declined request needs to stay on record
+    so the next driver can be offered the job.
+    """
+
+    __tablename__ = "driver_assignments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    booking_id: Mapped[str] = mapped_column(String(36), ForeignKey("bookings.id", ondelete="CASCADE"), index=True)
+    driver_id: Mapped[str] = mapped_column(String(36), ForeignKey("drivers.id"), index=True)
+    status: Mapped[DriverAssignmentStatus] = mapped_column(
+        SAEnum(DriverAssignmentStatus, name="driver_assignment_status"),
+        default=DriverAssignmentStatus.REQUESTED,
+        index=True,
+    )
+    # Snapshot of what the driver is paid for this job. Rates can change later;
+    # a settled booking must not silently reprice.
+    agreed_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    decline_reason: Mapped[str | None] = mapped_column(Text)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    booking: Mapped["Booking"] = relationship(back_populates="driver_assignments")
+    driver: Mapped["Driver"] = relationship(back_populates="assignments")
 
 
 # ──────────────────────────────────────────────
@@ -600,6 +821,18 @@ class Invoice(Base):
     booking_id: Mapped[str] = mapped_column(String(36), ForeignKey("bookings.id"), unique=True)
     invoice_number: Mapped[str] = mapped_column(String, unique=True)
     pdf_url: Mapped[str | None] = mapped_column(String)
+    # GST breakdown. Rental of a motor vehicle without operator is an intra-state
+    # service in the common case, so tax splits CGST/SGST; IGST is populated
+    # instead when the customer's state differs from the partner's.
+    seller_gstin: Mapped[str | None] = mapped_column(String(15))
+    customer_gstin: Mapped[str | None] = mapped_column(String(15))
+    place_of_supply: Mapped[str | None] = mapped_column(String)
+    hsn_sac_code: Mapped[str | None] = mapped_column(String(10))
+    taxable_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    cgst_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    sgst_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    igst_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     booking: Mapped["Booking"] = relationship(back_populates="invoice")
@@ -850,6 +1083,32 @@ class BlogPost(Base):
     status: Mapped[BlogStatus] = mapped_column(SAEnum(BlogStatus, name="blog_status"), default=BlogStatus.DRAFT)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SeoSetting(Base):
+    """Admin-editable meta tags for one public route.
+
+    `path` is the site-relative URL exactly as the public site renders it
+    ("/", "/search", "/faq"). Unique, so a route has at most one override.
+
+    Anything left NULL falls back to the value computed in code — an admin who
+    only wants to change a title should not be forced to restate the
+    description, and a half-filled row must never blank out a working tag.
+    """
+
+    __tablename__ = "seo_settings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    path: Mapped[str] = mapped_column(String, unique=True, index=True)
+    title: Mapped[str | None] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(String(400))
+    keywords: Mapped[str | None] = mapped_column(Text)
+    og_image_url: Mapped[str | None] = mapped_column(String)
+    # Lets an admin pull a thin or seasonal page out of the index without a deploy.
+    no_index: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_by_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class Setting(Base):

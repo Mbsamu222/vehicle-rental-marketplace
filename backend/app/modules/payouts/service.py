@@ -1,8 +1,9 @@
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.money import round_money
 from app.core.responses import ApiError
 from app.db.enums import BookingStatus, MonetizationFeatureKey, TransactionStatus, TransactionType
 from app.db.models import Booking, RentalPartner, Transaction
@@ -10,8 +11,6 @@ from app.modules.monetization import service as monetization_service
 from app.modules.subscriptions.service import get_active_subscription
 
 
-def _round2(value: Decimal) -> Decimal:
-    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 async def get_effective_commission_rate(db: AsyncSession, partner: RentalPartner) -> Decimal:
@@ -43,7 +42,7 @@ async def record_booking_commission(db: AsyncSession, booking: Booking) -> None:
 
     rate = await get_effective_commission_rate(db, partner)
     commission_base = booking.base_price - booking.discount_amount
-    commission_amount = _round2(commission_base * rate / Decimal(100))
+    commission_amount = round_money(commission_base * rate / Decimal(100))
 
     db.add(
         Transaction(
@@ -63,7 +62,7 @@ def _compute_payout_fee(amount: Decimal, config: dict) -> Decimal:
     cap = config.get("cap")
     if cap is not None:
         fee = min(fee, Decimal(str(cap)))
-    return _round2(max(fee, Decimal("0")))
+    return round_money(max(fee, Decimal("0")))
 
 
 async def create_payout(db: AsyncSession, rental_partner_id: str, actor_id: str) -> Transaction:
@@ -89,7 +88,7 @@ async def create_payout(db: AsyncSession, rental_partner_id: str, actor_id: str)
     commission_total = Decimal("0")
     for booking in bookings:
         base = booking.base_price - booking.discount_amount
-        commission = _round2(base * rate / Decimal(100))
+        commission = round_money(base * rate / Decimal(100))
         gross_total += base
         commission_total += commission
 

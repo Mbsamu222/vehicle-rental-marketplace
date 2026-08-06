@@ -1,11 +1,13 @@
 from datetime import datetime, timedelta, timezone
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.money import round_money
+from app.core.datetimes import ensure_aware
 from app.core.ids import UuidPath
 from app.core.pagination import Pagination, get_pagination
 from app.core.responses import ApiError, pagination_meta, success_response
@@ -156,12 +158,8 @@ async def get_dashboard(user: AuthUser = Depends(get_current_user), db: AsyncSes
     )
 
 
-def _ensure_aware(dt: datetime) -> datetime:
-    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 
-def _round2(value: Decimal) -> Decimal:
-    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 @router.get("/me/analytics", dependencies=[partner_only])
@@ -193,18 +191,18 @@ async def get_analytics(user: AuthUser = Depends(get_current_user), db: AsyncSes
     bookings = (await db.execute(bookings_stmt)).scalars().all()
 
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    recent_bookings = [b for b in bookings if _ensure_aware(b.pickup_datetime) >= thirty_days_ago]
+    recent_bookings = [b for b in bookings if ensure_aware(b.pickup_datetime) >= thirty_days_ago]
     booked_days = sum(
-        max(0.0, (_ensure_aware(b.return_datetime) - _ensure_aware(b.pickup_datetime)).total_seconds() / 86400)
+        max(0.0, (ensure_aware(b.return_datetime) - ensure_aware(b.pickup_datetime)).total_seconds() / 86400)
         for b in recent_bookings
     )
     utilization_percent = (
-        _round2(Decimal(str(booked_days)) / Decimal(vehicle_count * 30) * 100) if vehicle_count > 0 else Decimal("0")
+        round_money(Decimal(str(booked_days)) / Decimal(vehicle_count * 30) * 100) if vehicle_count > 0 else Decimal("0")
     )
 
     completed = [b for b in bookings if b.status == BookingStatus.COMPLETED]
     total_completed_revenue = sum((b.total_amount for b in completed), Decimal("0"))
-    average_revenue_per_vehicle = _round2(total_completed_revenue / vehicle_count) if vehicle_count > 0 else Decimal("0")
+    average_revenue_per_vehicle = round_money(total_completed_revenue / vehicle_count) if vehicle_count > 0 else Decimal("0")
 
     revenue_by_vehicle: dict[str, Decimal] = {}
     bookings_by_vehicle: dict[str, int] = {}

@@ -5,7 +5,7 @@ PublicHeader.tsx): a `rounded-xl` tile filled with a bottom-left to top-right
 gradient from `secondary` (#2563EB) to `accent` (#14B8A6), a white car glyph,
 and a small accent-400 (#2DD4BF) status dot at the bottom-right.
 
-Run:  python tools/generate_brand_assets.py
+Run:  python tools/generate_brand_assets.py   (run from mobile/)
 
 Regenerate whenever the brand colours in packages/config/tailwind-preset.cjs
 change. Output is written straight into each app's android/ios resource dirs
@@ -138,7 +138,7 @@ def main() -> None:
     written = 0
 
     for app in APPS:
-        app_dir = ROOT / "mobile" / app
+        app_dir = MOBILE_ROOT / app
         if not app_dir.exists():
             print(f"  skip {app} (not found)")
             continue

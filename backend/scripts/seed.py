@@ -42,6 +42,8 @@ PERMISSIONS = [
     {"key": "ads.manage", "module": "ads", "description": "Manage sponsored ad slots"},
     {"key": "affiliates.manage", "module": "affiliates", "description": "Manage affiliate partner directory"},
     {"key": "payouts.manage", "module": "payouts", "description": "Trigger and view rental partner payouts"},
+    {"key": "drivers.verify", "module": "drivers", "description": "Approve or reject driver profiles and documents"},
+    {"key": "bookings.manage", "module": "bookings", "description": "Record traffic fines and manage booking exceptions"},
     {"key": "subscriptions.manage", "module": "subscriptions", "description": "Manage subscription plans and confirm partner subscriptions"},
 ]
 

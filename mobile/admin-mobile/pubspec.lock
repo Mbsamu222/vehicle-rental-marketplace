@@ -579,7 +579,7 @@ packages:
   mobile_core:
     dependency: "direct main"
     description:
-      path: "../../packages/mobile_core"
+      path: "../mobile_core"
       relative: true
     source: path
     version: "0.0.1"

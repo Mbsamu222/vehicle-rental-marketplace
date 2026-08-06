@@ -4,6 +4,7 @@ from enum import Enum
 class UserType(str, Enum):
     CUSTOMER = "CUSTOMER"
     RENTAL_PARTNER = "RENTAL_PARTNER"
+    DRIVER = "DRIVER"
     ADMIN = "ADMIN"
     SUPER_ADMIN = "SUPER_ADMIN"
 
@@ -167,3 +168,66 @@ class AffiliateCategory(str, Enum):
     ROADSIDE_ASSISTANCE = "ROADSIDE_ASSISTANCE"
     FUEL = "FUEL"
     OTHER = "OTHER"
+
+
+class InspectionType(str, Enum):
+    """Which end of the rental a condition report was captured at."""
+
+    PICKUP = "PICKUP"
+    RETURN = "RETURN"
+
+
+class FuelLevel(str, Enum):
+    """Coarse gauge reading. Deliberately not a percentage — partners read a
+    needle at handover, and fake precision invites disputes."""
+
+    EMPTY = "EMPTY"
+    QUARTER = "QUARTER"
+    HALF = "HALF"
+    THREE_QUARTER = "THREE_QUARTER"
+    FULL = "FULL"
+
+
+class TrafficFineStatus(str, Enum):
+    PENDING = "PENDING"
+    NOTIFIED = "NOTIFIED"
+    PAID_BY_CUSTOMER = "PAID_BY_CUSTOMER"
+    DEDUCTED_FROM_DEPOSIT = "DEDUCTED_FROM_DEPOSIT"
+    WAIVED = "WAIVED"
+    DISPUTED = "DISPUTED"
+
+
+class ExtensionStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
+
+
+class DriverVerificationStatus(str, Enum):
+    """Mirrors PartnerVerificationStatus — a driver carries passengers, so the
+    same document review gate applies before they can be hired."""
+
+    PENDING = "PENDING"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    VERIFIED = "VERIFIED"
+    REJECTED = "REJECTED"
+    SUSPENDED = "SUSPENDED"
+
+
+class DriverAssignmentStatus(str, Enum):
+    """Lifecycle of a driver attached to one booking."""
+
+    REQUESTED = "REQUESTED"
+    ACCEPTED = "ACCEPTED"
+    DECLINED = "DECLINED"
+    CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
+
+
+class DriverDocumentType(str, Enum):
+    DRIVING_LICENSE = "DRIVING_LICENSE"
+    IDENTITY_PROOF = "IDENTITY_PROOF"
+    ADDRESS_PROOF = "ADDRESS_PROOF"
+    POLICE_VERIFICATION = "POLICE_VERIFICATION"
+    PHOTO = "PHOTO"

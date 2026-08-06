@@ -18,15 +18,15 @@ const _autoplay = Duration(seconds: 6);
 
 /// Same fallback copy the web slider shows before any banner is published, so
 /// the hero is never an empty box.
-const _fallbackSlide = HeroBannerSlideFallback(
+const _fallbackSlide = _HeroBannerSlideFallback(
   title: "Rent Smarter. Drive Unlimited Possibilities.",
   subtitle: "Transparent daily rates, instant booking confirmation, zero hidden fees.",
 );
 
-class HeroBannerSlideFallback {
+class _HeroBannerSlideFallback {
   final String title;
   final String subtitle;
-  const HeroBannerSlideFallback({required this.title, required this.subtitle});
+  const _HeroBannerSlideFallback({required this.title, required this.subtitle});
 }
 
 /// Port of HeroSlider.tsx: a full-bleed image slide with a bottom-up scrim,

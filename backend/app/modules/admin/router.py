@@ -37,6 +37,7 @@ from app.db.models import (
     RentalPartner,
     Role,
     RolePermission,
+    SeoSetting,
     Setting,
     SupportTicket,
     Transaction,
@@ -49,6 +50,8 @@ from app.deps.auth import AuthUser, get_current_user
 from app.deps.rbac import require_permission, require_user_type
 from app.modules.auth.service import sanitize_user
 from app.modules.admin.schemas import (
+    UpdateVehicleSeoInput,
+    UpsertSeoSettingInput,
     AssignRoleInput,
     CreateAdSlotInput,
     CreateAffiliatePartnerInput,
@@ -704,3 +707,74 @@ async def update_monetization_feature(
         db, key, is_enabled=payload.isEnabled, config=payload.config, actor_id=user.id
     )
     return success_response(orm_to_dict(feature))
+
+
+# ─── SEO settings ───
+
+
+@router.get("/seo")
+async def list_seo_settings(db: AsyncSession = Depends(get_db)):
+    """Public read.
+
+    The public site fetches this during `generateMetadata`, which runs
+    unauthenticated at build and request time — so it cannot sit behind
+    admin_only. Nothing here is sensitive: every field ends up in a meta tag
+    that is served to anonymous visitors anyway.
+    """
+    rows = (await db.execute(select(SeoSetting).order_by(SeoSetting.path))).scalars().all()
+    return success_response([orm_to_dict(r) for r in rows])
+
+
+@router.put("/seo", dependencies=[admin_only, Depends(require_permission("cms.manage"))])
+async def upsert_seo_setting(
+    payload: UpsertSeoSettingInput,
+    user: AuthUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Normalise so "/faq" and "faq/" cannot become two competing rows for the
+    # same page.
+    path = "/" + payload.path.strip().strip("/") if payload.path.strip("/") else "/"
+
+    row = (await db.execute(select(SeoSetting).where(SeoSetting.path == path))).scalar_one_or_none()
+    if row is None:
+        row = SeoSetting(path=path)
+        db.add(row)
+
+    row.title = payload.title
+    row.description = payload.description
+    row.keywords = payload.keywords
+    row.og_image_url = payload.ogImageUrl
+    row.no_index = payload.noIndex
+    row.updated_by_id = user.id
+
+    await db.commit()
+    await db.refresh(row)
+    return success_response(orm_to_dict(row))
+
+
+@router.delete("/seo/{id}", dependencies=[admin_only, Depends(require_permission("cms.manage"))])
+async def delete_seo_setting(id: UuidPath, db: AsyncSession = Depends(get_db)):
+    """Removing the override reverts the page to its code-computed metadata."""
+    row = await db.get(SeoSetting, id)
+    if row is None:
+        raise ApiError.not_found("SEO setting not found")
+    await db.delete(row)
+    await db.commit()
+    return success_response({"deleted": True})
+
+
+@router.patch("/vehicles/{id}/seo", dependencies=[admin_only, Depends(require_permission("cms.manage"))])
+async def update_vehicle_seo(
+    id: UuidPath, payload: UpdateVehicleSeoInput, db: AsyncSession = Depends(get_db)
+):
+    """Per-listing title/description. NULL means "derive from brand, model,
+    city, and price" — the default the vehicle page already builds."""
+    vehicle = await db.get(Vehicle, id)
+    if vehicle is None:
+        raise ApiError.not_found("Vehicle not found")
+
+    vehicle.seo_title = payload.seoTitle
+    vehicle.seo_description = payload.seoDescription
+    await db.commit()
+    await db.refresh(vehicle)
+    return success_response(orm_to_dict(vehicle))
