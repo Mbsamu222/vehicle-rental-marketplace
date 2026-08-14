@@ -14,8 +14,6 @@ import {
   Route as RouteIcon,
   RotateCcw,
   Star,
-  Apple,
-  PlayCircle,
   Car,
   Bike,
   ArrowRight,
@@ -50,6 +48,39 @@ import { getCategoryIcon, getCategoryColorStyle } from "@/utils/categoryIcons";
 
 const stepIcons = [Search, KeyRound, CreditCard, RouteIcon, RotateCcw];
 const whyIcons = [UserCheck, Wallet, Sparkles, Headset];
+
+/** Solid Apple mark, matching the glyph used on the real App Store badge. */
+function AppleMark({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M16.365 1.43c0 1.14-.415 2.19-1.238 3.02-.902.91-2.03 1.44-3.02 1.36-.12-1.13.42-2.28 1.24-3.09.9-.93 2.13-1.47 3.02-1.29zM19.9 17.5c-.53 1.23-.79 1.78-1.47 2.87-.95 1.52-2.28 3.41-3.94 3.42-1.47.02-1.85-.96-3.84-.95-1.99.01-2.4.97-3.87.95-1.66-.02-2.92-1.73-3.87-3.24C.5 17.1-.24 12.62 1.4 9.53c1.16-2.19 3.08-3.47 4.9-3.47 1.85 0 3.01 1 4.54 1 1.48 0 2.38-1 4.53-1 1.6 0 3.3.87 4.5 2.38-3.96 2.17-3.32 7.84.03 9.06z" />
+    </svg>
+  );
+}
+
+/** Google Play mark: official multi-colored Play triangle. */
+function GooglePlayMark({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M3.609 1.814C3.232 2.213 3 2.809 3 3.585v16.83c0 .776.232 1.372.609 1.771l.092.086L13.19 12.78v-1.56L3.701 1.728l-.092.086z"
+        fill="#00D66B"
+      />
+      <path
+        d="M16.35 15.942l-3.16-3.162v-1.56l3.16-3.162.072.041 3.743 2.127c1.069.607 1.069 1.6 0 2.207l-3.743 2.127-.072.042z"
+        fill="#FFC107"
+      />
+      <path
+        d="M16.422 15.9l-3.232-3.232-9.489 9.489c.353.376.938.423 1.564.068l11.157-6.325"
+        fill="#FF3D00"
+      />
+      <path
+        d="M16.422 8.1l-11.157-6.325c-.626-.355-1.211-.308-1.564.068l9.489 9.489L16.422 8.1z"
+        fill="#0288D1"
+      />
+    </svg>
+  );
+}
 
 const partnerChips = [
   { name: "CityDrive Rentals", city: "T Nagar", rating: 4.8 },
@@ -484,7 +515,7 @@ export function HomePage() {
       {/* SECTION 9: DOWNLOAD MOBILE APP CTA */}
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <RevealOnScroll>
-          <Card className="relative flex flex-col items-center gap-6 overflow-hidden bg-surface p-8 text-center sm:p-10 lg:flex-row lg:justify-between lg:text-left shadow-card border border-border">
+          <div className="relative flex flex-col items-center justify-between gap-8 overflow-hidden rounded-[28px] border border-border/70 bg-white p-8 shadow-card dark:bg-dark-surface dark:border-white/10 sm:p-12 lg:flex-row lg:text-left">
             <div>
               <h2 className="font-heading text-2xl font-extrabold text-primary dark:text-white sm:text-3xl">Take RentWheels with you</h2>
               <p className="mt-2 max-w-md text-sm text-primary-400 leading-relaxed">
@@ -492,29 +523,40 @@ export function HomePage() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                size="lg"
-                className="gap-3 transition-transform hover:-translate-y-0.5 dark:bg-white dark:text-primary dark:hover:bg-primary-50"
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
+              {/* App Store Badge */}
+              <a
+                href="#app-store"
+                className="group flex items-center gap-3.5 rounded-full bg-[#0C1017] px-6 py-3 text-white shadow-md transition-all duration-300 hover:scale-[1.03] hover:bg-[#161D2B] hover:shadow-lg active:scale-95 border border-white/10"
               >
-                <Apple size={22} />
-                <div className="text-left leading-tight">
-                  <span className="block text-[10px] uppercase tracking-wider text-white/70 font-semibold dark:text-primary-400">Download on the</span>
-                  <span className="block text-sm font-bold">App Store</span>
+                <AppleMark size={26} />
+                <div className="text-left leading-none">
+                  <span className="block text-[9px] font-semibold uppercase tracking-wider text-slate-300/90">
+                    DOWNLOAD ON THE
+                  </span>
+                  <span className="mt-1 block font-sans text-[15px] font-bold tracking-tight text-white">
+                    App Store
+                  </span>
                 </div>
-              </Button>
-              <Button
-                size="lg"
-                className="gap-3 transition-transform hover:-translate-y-0.5 dark:bg-white dark:text-primary dark:hover:bg-primary-50"
+              </a>
+
+              {/* Google Play Badge */}
+              <a
+                href="#google-play"
+                className="group flex items-center gap-3.5 rounded-full bg-[#0C1017] px-6 py-3 text-white shadow-md transition-all duration-300 hover:scale-[1.03] hover:bg-[#161D2B] hover:shadow-lg active:scale-95 border border-white/10"
               >
-                <PlayCircle size={22} />
-                <div className="text-left leading-tight">
-                  <span className="block text-[10px] uppercase tracking-wider text-white/70 font-semibold dark:text-primary-400">Get it on</span>
-                  <span className="block text-sm font-bold">Google Play</span>
+                <GooglePlayMark size={24} />
+                <div className="text-left leading-none">
+                  <span className="block text-[9px] font-semibold uppercase tracking-wider text-slate-300/90">
+                    GET IT ON
+                  </span>
+                  <span className="mt-1 block font-sans text-[15px] font-bold tracking-tight text-white">
+                    Google Play
+                  </span>
                 </div>
-              </Button>
+              </a>
             </div>
-          </Card>
+          </div>
         </RevealOnScroll>
       </section>
 

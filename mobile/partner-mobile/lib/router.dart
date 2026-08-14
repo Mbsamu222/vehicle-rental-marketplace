@@ -60,8 +60,10 @@ final partnerRouterProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       if (profile == null) {
         // Documents/bank-details need a partner id to attach to, so only the
-        // profile-creation step is reachable until `/rental-partners/me` exists.
-        return loc == "/onboarding/business" ? null : "/onboarding/business";
+        // profile-creation step (and the map picker it opens) is reachable
+        // until `/rental-partners/me` exists.
+        const allowedBeforeProfile = {"/onboarding/business", "/location-picker"};
+        return allowedBeforeProfile.contains(loc) ? null : "/onboarding/business";
       }
       if (loc == "/onboarding/business") return "/"; // profile already created
       return null;
@@ -83,6 +85,7 @@ final partnerRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: "/onboarding/business", builder: (context, state) => const BusinessProfileFormPage()),
       GoRoute(path: "/onboarding/documents", builder: (context, state) => const DocumentsPage()),
       GoRoute(path: "/onboarding/bank-details", builder: (context, state) => const BankDetailsPage()),
+      GoRoute(path: "/location-picker", builder: (context, state) => const LocationPickerPage()),
       GoRoute(path: "/vehicles/new", builder: (context, state) => const VehicleFormPage()),
       GoRoute(
         path: "/vehicles/:id/edit",

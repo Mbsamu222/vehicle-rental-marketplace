@@ -39,15 +39,41 @@ import 'screens/vehicle/vehicle_detail_page.dart';
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {
     ref.listen(authControllerProvider, (previous, next) {
-      if (previous?.status != next.status) notifyListeners();
+      if (previous?.status != next.status) _notify();
     });
   }
+
+  // Firebase's authStateChanges() resolves its first value in a microtask
+  // right at app boot, often before Flutter has painted its first frame.
+  // Notifying synchronously there makes go_router rebuild its Navigator
+  // while frame #1's widget tree is still being finalized, so two
+  // _CustomNavigator instances briefly claim the same GlobalObjectKey —
+  // see https://github.com/flutter/flutter/issues/159262. Deferring to
+  // after the first frame keeps the router rebuild out of that window.
+  void _notify() {
+    final binding = WidgetsBinding.instance;
+    if (binding.firstFrameRasterized) {
+      notifyListeners();
+    } else {
+      binding.addPostFrameCallback((_) => notifyListeners());
+    }
+  }
 }
+
+// go_router derives each Navigator's widget identity from `navigatorKey.hashCode`
+// (see _CustomNavigator in its builder.dart). Leaving these unlabeled lets two
+// distinct GlobalKey<NavigatorState>() instances collide on Flutter Web's DDC
+// identity-hash implementation, surfacing as a duplicate-GlobalKey crash —
+// https://github.com/flutter/flutter/issues/159262. Explicit, stable keys make
+// that far less likely.
+final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: "root");
+final _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: "shell");
 
 final customerRouterProvider = Provider<GoRouter>((ref) {
   final refresh = _RouterRefreshNotifier(ref);
 
   return GoRouter(
+    navigatorKey: _rootNavigatorKey,
     initialLocation: "/",
     refreshListenable: refresh,
     redirect: (context, state) {
@@ -89,6 +115,7 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       ShellRoute(
+        navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => MainShell(child: child),
         routes: [
           GoRoute(path: "/", builder: (context, state) => const HomePage()),
@@ -120,6 +147,7 @@ final customerRouterProvider = Provider<GoRouter>((ref) {
         path: "/bookings/:id/hire-driver",
         builder: (context, state) => HireDriverPage(bookingId: state.pathParameters["id"]!),
       ),
+      GoRoute(path: "/location-picker", builder: (context, state) => const LocationPickerPage()),
       GoRoute(path: "/account/edit", builder: (context, state) => const EditProfilePage()),
       GoRoute(path: "/account/wallet", builder: (context, state) => const WalletPage()),
       GoRoute(path: "/account/payments", builder: (context, state) => const PaymentsPage()),

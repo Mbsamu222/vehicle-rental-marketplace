@@ -23,6 +23,7 @@ import {
   type CreatePartnerProfileInput,
   type CreateSubscriptionPlanInput,
   type CreateVehicleInput,
+  type NearbyVehiclesParams,
   type UpdateBrandInput,
   type UpdateCategoryInput,
   type UpdateCityInput,
@@ -195,6 +196,13 @@ export function useDeleteVehicleBrand() {
 
 export function useVehicleSearch(params: VehicleSearchParams) {
   return useQuery({ queryKey: ["vehicles", "search", params], queryFn: () => vehiclesApi.search(params) });
+}
+export function useNearbyVehicles(params: Partial<NearbyVehiclesParams>) {
+  return useQuery({
+    queryKey: ["vehicles", "nearby", params],
+    queryFn: () => vehiclesApi.searchNearby(params as NearbyVehiclesParams),
+    enabled: params.latitude != null && params.longitude != null,
+  });
 }
 export function useVehicle(id: string | undefined) {
   return useQuery({

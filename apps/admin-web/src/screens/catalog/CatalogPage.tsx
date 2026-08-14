@@ -24,7 +24,7 @@ import {
   useDeleteVehicleBrand,
 } from "@vrm/api-client";
 import type { Country, City, VehicleCategory, VehicleBrand } from "@vrm/api-client";
-import { Badge, Button, Card, Checkbox, DataTable, Input, Modal, PageTransition, Select, Tabs, useToast } from "@vrm/ui";
+import { Badge, Button, Card, Checkbox, DataTable, Input, MapPicker, Modal, PageTransition, Select, Tabs, useToast } from "@vrm/ui";
 
 type Section = "countries" | "cities" | "categories" | "brands";
 
@@ -55,6 +55,8 @@ const citySchema = z.object({
   isPopular: z.boolean().optional(),
   imageUrl: urlField,
   isActive: z.boolean().optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
 });
 type CityForm = z.infer<typeof citySchema>;
 
@@ -131,6 +133,8 @@ export function CatalogPage() {
       isPopular: c.isPopular,
       imageUrl: c.imageUrl ?? "",
       isActive: c.isActive,
+      latitude: c.latitude ?? undefined,
+      longitude: c.longitude ?? undefined,
     });
     setModalOpen(true);
   };
@@ -169,6 +173,8 @@ export function CatalogPage() {
         isPopular: !!values.isPopular,
         imageUrl: values.imageUrl,
         isActive: values.isActive,
+        latitude: values.latitude,
+        longitude: values.longitude,
       };
       if (editingCity) {
         await updateCity.mutateAsync({ id: editingCity.id, input });
@@ -179,6 +185,8 @@ export function CatalogPage() {
           countryId: input.countryId,
           isPopular: input.isPopular,
           imageUrl: input.imageUrl,
+          latitude: input.latitude,
+          longitude: input.longitude,
         });
         toast.success("City added");
       }
@@ -506,6 +514,19 @@ export function CatalogPage() {
               {...cityForm.register("countryId")}
             />
             <Input label="Image URL (optional)" {...cityForm.register("imageUrl")} error={cityForm.formState.errors.imageUrl?.message} />
+            <MapPicker
+              label="City center on map (optional)"
+              hint="Search an address or drag the pin to set this city's map center."
+              value={
+                cityForm.watch("latitude") != null && cityForm.watch("longitude") != null
+                  ? { lat: cityForm.watch("latitude")!, lng: cityForm.watch("longitude")! }
+                  : null
+              }
+              onChange={(val) => {
+                cityForm.setValue("latitude", val?.lat, { shouldDirty: true });
+                cityForm.setValue("longitude", val?.lng, { shouldDirty: true });
+              }}
+            />
             <Checkbox label="Mark as popular" {...cityForm.register("isPopular")} />
             {editingCity && <Checkbox label="Active" {...cityForm.register("isActive")} />}
             <Button type="submit" isLoading={isSaving} fullWidth>

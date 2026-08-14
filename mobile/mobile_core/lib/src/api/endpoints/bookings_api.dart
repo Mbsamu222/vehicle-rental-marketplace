@@ -13,6 +13,10 @@ class BookingsApi {
     required DateTime returnDatetime,
     required String pickupLocation,
     required String returnLocation,
+    double? pickupLatitude,
+    double? pickupLongitude,
+    double? returnLatitude,
+    double? returnLongitude,
     String? couponCode,
   }) {
     return _client.post(
@@ -24,6 +28,10 @@ class BookingsApi {
         "returnDatetime": returnDatetime.toUtc().toIso8601String(),
         "pickupLocation": pickupLocation,
         "returnLocation": returnLocation,
+        "pickupLatitude": ?pickupLatitude,
+        "pickupLongitude": ?pickupLongitude,
+        "returnLatitude": ?returnLatitude,
+        "returnLongitude": ?returnLongitude,
         "couponCode": ?couponCode,
       },
       parse: (data) => Booking.fromJson(asJsonMap(data)),

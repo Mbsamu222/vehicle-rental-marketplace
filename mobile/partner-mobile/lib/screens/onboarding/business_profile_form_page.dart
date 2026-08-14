@@ -24,6 +24,8 @@ class _BusinessProfileFormPageState extends ConsumerState<BusinessProfileFormPag
   String? _cityId;
   String? _error;
   bool _prefilled = false;
+  double? _latitude;
+  double? _longitude;
 
   void _prefill(RentalPartner partner) {
     if (_prefilled) return;
@@ -34,6 +36,17 @@ class _BusinessProfileFormPageState extends ConsumerState<BusinessProfileFormPag
     _address.text = partner.address;
     _description.text = partner.description ?? "";
     _cityId = partner.cityId;
+    _latitude = partner.latitude;
+    _longitude = partner.longitude;
+  }
+
+  Future<void> _pickLocationOnMap() async {
+    final result = await context.push<LatLngResult>("/location-picker");
+    if (result == null) return;
+    setState(() {
+      _latitude = result.latitude;
+      _longitude = result.longitude;
+    });
   }
 
   @override
@@ -59,6 +72,8 @@ class _BusinessProfileFormPageState extends ConsumerState<BusinessProfileFormPag
       "cityId": _cityId,
       "address": _address.text.trim(),
       if (_description.text.trim().isNotEmpty) "description": _description.text.trim(),
+      if (_latitude != null) "latitude": _latitude,
+      if (_longitude != null) "longitude": _longitude,
     };
     try {
       final api = ref.read(marketplaceApiProvider).rentalPartners;
@@ -142,6 +157,16 @@ class _BusinessProfileFormPageState extends ConsumerState<BusinessProfileFormPag
                     maxLines: 2,
                     decoration: const InputDecoration(labelText: "Address"),
                     validator: (v) => (v == null || v.isEmpty) ? "Required" : null,
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: _pickLocationOnMap,
+                    icon: const Icon(Icons.map_outlined),
+                    label: Text(
+                      _latitude != null && _longitude != null
+                          ? "Business location set on map"
+                          : "Set business location on map (optional)",
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(controller: _description, maxLines: 3, decoration: const InputDecoration(labelText: "Description (optional)")),

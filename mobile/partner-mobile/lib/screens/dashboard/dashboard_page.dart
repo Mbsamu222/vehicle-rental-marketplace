@@ -80,7 +80,7 @@ class DashboardPage extends ConsumerWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  childAspectRatio: 1.25,
+                  mainAxisExtent: 144,
                   children: [
                     StatCard(
                       label: "Total vehicles",

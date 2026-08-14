@@ -27,6 +27,26 @@ class _BookingCheckoutPageState extends ConsumerState<BookingCheckoutPage> {
   final _couponController = TextEditingController();
   String? _error;
   bool _initialized = false;
+  double? _pickupLatitude;
+  double? _pickupLongitude;
+  double? _returnLatitude;
+  double? _returnLongitude;
+
+  Future<void> _pickLocationOnMap({required bool isPickup}) async {
+    final result = await context.push<LatLngResult>("/location-picker");
+    if (result == null) return;
+    setState(() {
+      if (isPickup) {
+        _pickupLatitude = result.latitude;
+        _pickupLongitude = result.longitude;
+        if (result.address != null && result.address!.isNotEmpty) _pickupLocation.text = result.address!;
+      } else {
+        _returnLatitude = result.latitude;
+        _returnLongitude = result.longitude;
+        if (result.address != null && result.address!.isNotEmpty) _returnLocation.text = result.address!;
+      }
+    });
+  }
 
   @override
   void didChangeDependencies() {
@@ -81,6 +101,10 @@ class _BookingCheckoutPageState extends ConsumerState<BookingCheckoutPage> {
         returnDatetime: _return!,
         pickupLocation: _pickupLocation.text.trim(),
         returnLocation: _returnLocation.text.trim(),
+        pickupLatitude: _pickupLatitude,
+        pickupLongitude: _pickupLongitude,
+        returnLatitude: _returnLatitude,
+        returnLongitude: _returnLongitude,
         couponCode: _couponController.text.trim().isEmpty ? null : _couponController.text.trim().toUpperCase(),
       );
       await api.payments.createOrder(bookingId: booking.id, provider: "WALLET");
@@ -212,9 +236,29 @@ class _BookingCheckoutPageState extends ConsumerState<BookingCheckoutPage> {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          TextField(controller: _pickupLocation, decoration: const InputDecoration(labelText: "Pickup location")),
+                          TextField(
+                            controller: _pickupLocation,
+                            decoration: InputDecoration(
+                              labelText: "Pickup location",
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.map_outlined, color: AppColors.secondary),
+                                tooltip: "Pick on map",
+                                onPressed: () => _pickLocationOnMap(isPickup: true),
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 12),
-                          TextField(controller: _returnLocation, decoration: const InputDecoration(labelText: "Return location")),
+                          TextField(
+                            controller: _returnLocation,
+                            decoration: InputDecoration(
+                              labelText: "Return location",
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.map_outlined, color: AppColors.secondary),
+                                tooltip: "Pick on map",
+                                onPressed: () => _pickLocationOnMap(isPickup: false),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),

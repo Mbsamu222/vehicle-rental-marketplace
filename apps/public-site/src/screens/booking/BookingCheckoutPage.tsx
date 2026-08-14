@@ -18,7 +18,22 @@ import {
   useMonetizationStatus,
   type PaymentProvider,
 } from "@vrm/api-client";
-import { Button, Card, Input, Select, Checkbox, DateRangeFields, Modal, FileUpload, useToast, PageSpinner, Badge, cn } from "@vrm/ui";
+import {
+  Button,
+  Card,
+  Input,
+  MapPicker,
+  Select,
+  Checkbox,
+  DateRangeFields,
+  Modal,
+  FileUpload,
+  useToast,
+  PageSpinner,
+  Badge,
+  cn,
+  type MapPickerValue,
+} from "@vrm/ui";
 
 const TAX_RATE = 0.18;
 
@@ -63,8 +78,8 @@ export function BookingCheckoutPage() {
 
   const [pickup, setPickup] = useState(searchParams.get("pickup") ?? "");
   const [returnAt, setReturnAt] = useState(searchParams.get("return") ?? "");
-  const [pickupLocation, setPickupLocation] = useState("");
-  const [returnLocation, setReturnLocation] = useState("");
+  const [pickupPoint, setPickupPoint] = useState<MapPickerValue | null>(null);
+  const [returnPoint, setReturnPoint] = useState<MapPickerValue | null>(null);
   const [licenseId, setLicenseId] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState(0);
@@ -127,7 +142,7 @@ export function BookingCheckoutPage() {
   };
 
   const onSubmit = async () => {
-    if (!pickup || !returnAt || !pickupLocation || !returnLocation || !licenseId) {
+    if (!pickup || !returnAt || !pickupPoint || !returnPoint || !licenseId) {
       toast.error("Fill in all required fields");
       return;
     }
@@ -142,8 +157,12 @@ export function BookingCheckoutPage() {
         drivingLicenseId: licenseId,
         pickupDatetime: new Date(pickup).toISOString(),
         returnDatetime: new Date(returnAt).toISOString(),
-        pickupLocation,
-        returnLocation,
+        pickupLocation: pickupPoint.address ?? `${pickupPoint.lat.toFixed(5)}, ${pickupPoint.lng.toFixed(5)}`,
+        returnLocation: returnPoint.address ?? `${returnPoint.lat.toFixed(5)}, ${returnPoint.lng.toFixed(5)}`,
+        pickupLatitude: pickupPoint.lat,
+        pickupLongitude: pickupPoint.lng,
+        returnLatitude: returnPoint.lat,
+        returnLongitude: returnPoint.lng,
         couponCode: couponCode || undefined,
         extraDriverCount,
         isYoungDriver,
@@ -178,8 +197,26 @@ export function BookingCheckoutPage() {
               <MapPin size={16} className="text-secondary" /> Pickup & return
             </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Input label="Pickup location" value={pickupLocation} onChange={(e) => setPickupLocation(e.target.value)} />
-              <Input label="Return location" value={returnLocation} onChange={(e) => setReturnLocation(e.target.value)} />
+              <MapPicker
+                label="Pickup location"
+                value={pickupPoint}
+                onChange={setPickupPoint}
+                defaultCenter={
+                  vehicle.latitude != null && vehicle.longitude != null
+                    ? { lat: vehicle.latitude, lng: vehicle.longitude }
+                    : undefined
+                }
+              />
+              <MapPicker
+                label="Return location"
+                value={returnPoint}
+                onChange={setReturnPoint}
+                defaultCenter={
+                  vehicle.latitude != null && vehicle.longitude != null
+                    ? { lat: vehicle.latitude, lng: vehicle.longitude }
+                    : undefined
+                }
+              />
             </div>
           </Card>
 

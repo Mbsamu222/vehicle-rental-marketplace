@@ -23,6 +23,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Google Maps SDK key. Supply it without ever committing a secret to
+        // this repo: put `GOOGLE_MAPS_API_KEY=your-key` in your user-global
+        // ~/.gradle/gradle.properties (Gradle merges it automatically), or
+        // pass a CI-injected `-PGOOGLE_MAPS_API_KEY=...` flag. Empty by
+        // default so the app still builds and runs without one — the map
+        // just renders Google's "for development purposes only" tiles.
+        manifestPlaceholders["googleMapsApiKey"] = (project.findProperty("GOOGLE_MAPS_API_KEY") as String?) ?: ""
     }
 
     buildTypes {

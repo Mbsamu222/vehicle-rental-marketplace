@@ -118,6 +118,8 @@ export interface UpdateCityInput {
   isPopular?: boolean;
   imageUrl?: string;
   isActive?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface UpdateCategoryInput {
@@ -155,8 +157,14 @@ export const catalogApi = {
   updateCountry: (id: string, input: UpdateCountryInput) =>
     unwrap<Country>(http.patch(`/catalog/countries/${id}`, input)),
   removeCountry: (id: string) => unwrap<unknown>(http.delete(`/catalog/countries/${id}`)),
-  createCity: (input: { name: string; countryId: string; isPopular?: boolean; imageUrl?: string }) =>
-    unwrap<City>(http.post("/catalog/cities", input)),
+  createCity: (input: {
+    name: string;
+    countryId: string;
+    isPopular?: boolean;
+    imageUrl?: string;
+    latitude?: number;
+    longitude?: number;
+  }) => unwrap<City>(http.post("/catalog/cities", input)),
   updateCity: (id: string, input: UpdateCityInput) => unwrap<City>(http.patch(`/catalog/cities/${id}`, input)),
   removeCity: (id: string) => unwrap<unknown>(http.delete(`/catalog/cities/${id}`)),
   createCategory: (input: { name: string; slug: string; iconUrl?: string }) =>
@@ -191,6 +199,21 @@ export interface VehicleSearchParams {
   limit?: number;
 }
 
+export interface NearbyVehiclesParams {
+  latitude: number;
+  longitude: number;
+  radiusKm?: number;
+  categoryId?: string;
+  brandId?: string;
+  transmission?: VehicleTransmission;
+  fuelType?: FuelType;
+  minPrice?: number;
+  maxPrice?: number;
+  seatingCapacity?: number;
+  page?: number;
+  limit?: number;
+}
+
 export interface CreateVehicleInput {
   categoryId: string;
   brandId: string;
@@ -212,6 +235,7 @@ export interface CreateVehicleInput {
 
 export const vehiclesApi = {
   search: (params: VehicleSearchParams) => unwrapList<Vehicle>(http.get("/vehicles/search", { params })),
+  searchNearby: (params: NearbyVehiclesParams) => unwrapList<Vehicle>(http.get("/vehicles/nearby", { params })),
   getById: (id: string) => unwrap<Vehicle>(http.get(`/vehicles/${id}`)),
   checkAvailability: (id: string, pickupDatetime: string, returnDatetime: string) =>
     unwrap<{ available: boolean }>(
@@ -317,6 +341,10 @@ export interface CreateBookingInput {
   returnDatetime: string;
   pickupLocation: string;
   returnLocation: string;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
+  returnLatitude?: number;
+  returnLongitude?: number;
   couponCode?: string;
   extraDriverCount?: number;
   isYoungDriver?: boolean;

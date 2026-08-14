@@ -63,6 +63,7 @@ export 'src/widgets/common.dart';
 export 'src/widgets/dashboard_top_bar.dart';
 export 'src/widgets/gradient_mesh.dart';
 export 'src/widgets/hero_slider.dart';
+export 'src/widgets/location_picker.dart';
 export 'src/widgets/marketing.dart';
 export 'src/widgets/notification_list.dart';
 export 'src/widgets/page_header.dart';

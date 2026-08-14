@@ -36,6 +36,17 @@ class _VehicleFormPageState extends ConsumerState<VehicleFormPage> {
   String _fuelType = "PETROL";
   String? _error;
   bool _prefilled = false;
+  double? _latitude;
+  double? _longitude;
+
+  Future<void> _pickLocationOnMap() async {
+    final result = await context.push<LatLngResult>("/location-picker");
+    if (result == null) return;
+    setState(() {
+      _latitude = result.latitude;
+      _longitude = result.longitude;
+    });
+  }
 
   bool get _isEditing => widget.vehicleId != null;
 
@@ -56,6 +67,8 @@ class _VehicleFormPageState extends ConsumerState<VehicleFormPage> {
     _cityId = vehicle.cityId;
     _transmission = vehicle.transmission.toJson();
     _fuelType = vehicle.fuelType.toJson();
+    _latitude = vehicle.latitude;
+    _longitude = vehicle.longitude;
   }
 
   @override
@@ -93,6 +106,8 @@ class _VehicleFormPageState extends ConsumerState<VehicleFormPage> {
       "securityDeposit": double.tryParse(_securityDeposit.text.trim()) ?? 0,
       if (_insuranceDetails.text.trim().isNotEmpty) "insuranceDetails": _insuranceDetails.text.trim(),
       if (_rentalPolicies.text.trim().isNotEmpty) "rentalPolicies": _rentalPolicies.text.trim(),
+      if (_latitude != null) "latitude": _latitude,
+      if (_longitude != null) "longitude": _longitude,
     };
     try {
       final api = ref.read(marketplaceApiProvider).vehicles;
@@ -159,6 +174,16 @@ class _VehicleFormPageState extends ConsumerState<VehicleFormPage> {
                   ),
                   loading: () => const SectionLoading(),
                   error: (e, _) => Text("$e"),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _pickLocationOnMap,
+                  icon: const Icon(Icons.map_outlined),
+                  label: Text(
+                    _latitude != null && _longitude != null
+                        ? "Pickup location set on map"
+                        : "Set precise pickup location on map (optional)",
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Row(

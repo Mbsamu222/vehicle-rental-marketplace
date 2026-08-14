@@ -1,2 +1,8 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
+
+// Google Maps SDK key. Empty by default — the app builds and runs without
+// one (Google's "for development purposes only" tiles render instead of a
+// crash). Override locally via a gitignored `Local.xcconfig` that sets
+// GOOGLE_MAPS_API_KEY, or inject it as a build setting in CI.
+GOOGLE_MAPS_API_KEY =

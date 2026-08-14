@@ -19,6 +19,7 @@ import {
   Button,
   Card,
   Input,
+  MapPicker,
   Select,
   Textarea,
   Tabs,
@@ -36,6 +37,8 @@ const profileSchema = z.object({
   cityId: z.string().min(1, "Required"),
   address: z.string().min(1, "Required"),
   description: z.string().max(2000).optional().or(z.literal("")),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
 });
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
@@ -85,6 +88,8 @@ export function BusinessProfilePage() {
   const {
     register: registerProfile,
     handleSubmit: handleProfileSubmit,
+    watch: watchProfile,
+    setValue: setProfileValue,
     formState: { errors: profileErrors, isSubmitting: isProfileSubmitting },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -96,9 +101,20 @@ export function BusinessProfilePage() {
           cityId: partner.cityId,
           address: partner.address,
           description: partner.description ?? "",
+          latitude: partner.latitude ?? undefined,
+          longitude: partner.longitude ?? undefined,
         }
       : undefined,
   });
+
+  const profileCityId = watchProfile("cityId");
+  const profileLatitude = watchProfile("latitude");
+  const profileLongitude = watchProfile("longitude");
+  const profileCity = cities?.find((c) => c.id === profileCityId);
+  const profileCityCenter =
+    profileCity?.latitude != null && profileCity?.longitude != null
+      ? { lat: profileCity.latitude, lng: profileCity.longitude }
+      : undefined;
 
   const {
     register: registerBank,
@@ -218,6 +234,16 @@ export function BusinessProfilePage() {
               {...registerProfile("cityId")}
             />
             <Input label="Address" error={profileErrors.address?.message} {...registerProfile("address")} />
+            <MapPicker
+              label="Business location on map (optional)"
+              hint="Search an address or drag the pin to pinpoint your business location."
+              value={profileLatitude != null && profileLongitude != null ? { lat: profileLatitude, lng: profileLongitude } : null}
+              onChange={(val) => {
+                setProfileValue("latitude", val?.lat, { shouldDirty: true });
+                setProfileValue("longitude", val?.lng, { shouldDirty: true });
+              }}
+              defaultCenter={profileCityCenter}
+            />
             <Textarea label="Description (optional)" {...registerProfile("description")} />
             <Button type="submit" isLoading={isProfileSubmitting} className="w-fit">
               Save changes

@@ -63,11 +63,16 @@ class Booking {
   final DateTime returnDatetime;
   final String pickupLocation;
   final String returnLocation;
+  final double? pickupLatitude;
+  final double? pickupLongitude;
+  final double? returnLatitude;
+  final double? returnLongitude;
   final double basePrice;
   final double discountAmount;
   final double taxAmount;
   final double securityDeposit;
   final double totalAmount;
+  final bool withDriver;
   final BookingStatus status;
   final String? cancellationReason;
   final DateTime createdAt;
@@ -91,11 +96,16 @@ class Booking {
     required this.returnDatetime,
     required this.pickupLocation,
     required this.returnLocation,
+    this.pickupLatitude,
+    this.pickupLongitude,
+    this.returnLatitude,
+    this.returnLongitude,
     required this.basePrice,
     required this.discountAmount,
     required this.taxAmount,
     required this.securityDeposit,
     required this.totalAmount,
+    this.withDriver = false,
     required this.status,
     this.cancellationReason,
     required this.createdAt,
@@ -120,11 +130,16 @@ class Booking {
         returnDatetime: asDate(json["returnDatetime"]),
         pickupLocation: asString(json["pickupLocation"]),
         returnLocation: asString(json["returnLocation"]),
+        pickupLatitude: asDoubleOrNull(json["pickupLatitude"]),
+        pickupLongitude: asDoubleOrNull(json["pickupLongitude"]),
+        returnLatitude: asDoubleOrNull(json["returnLatitude"]),
+        returnLongitude: asDoubleOrNull(json["returnLongitude"]),
         basePrice: asDouble(json["basePrice"]),
         discountAmount: asDouble(json["discountAmount"]),
         taxAmount: asDouble(json["taxAmount"]),
         securityDeposit: asDouble(json["securityDeposit"]),
         totalAmount: asDouble(json["totalAmount"]),
+        withDriver: asBool(json["withDriver"]),
         status: BookingStatus.fromJson(asStringOrNull(json["status"])),
         cancellationReason: asStringOrNull(json["cancellationReason"]),
         createdAt: asDate(json["createdAt"]),

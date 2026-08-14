@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:mobile_core/mobile_core.dart';
 
 class SearchPage extends ConsumerStatefulWidget {
@@ -22,6 +24,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   bool _hasMore = true;
   bool _loading = false;
   String? _error;
+
+  bool _mapMode = false;
+  bool _loadingNearby = false;
+  String? _nearbyError;
+  gmaps.LatLng? _userLocation;
+  List<Vehicle> _nearbyItems = [];
 
   @override
   void didChangeDependencies() {
@@ -65,6 +73,49 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     }
   }
 
+  Future<void> _toggleMapMode() async {
+    if (_mapMode) {
+      setState(() => _mapMode = false);
+      return;
+    }
+    setState(() {
+      _mapMode = true;
+      _nearbyError = null;
+    });
+    await _loadNearby();
+  }
+
+  Future<void> _loadNearby() async {
+    setState(() => _loadingNearby = true);
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        setState(() => _nearbyError = "Location permission is needed to show vehicles near you.");
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition();
+      final result = await ref.read(marketplaceApiProvider).vehicles.nearby(
+            latitude: position.latitude,
+            longitude: position.longitude,
+            radiusKm: 15,
+            categoryId: _categoryId,
+          );
+      setState(() {
+        _userLocation = gmaps.LatLng(position.latitude, position.longitude);
+        _nearbyItems = result.items;
+      });
+    } on ApiException catch (e) {
+      setState(() => _nearbyError = e.message);
+    } catch (_) {
+      setState(() => _nearbyError = "Couldn't get your location.");
+    } finally {
+      if (mounted) setState(() => _loadingNearby = false);
+    }
+  }
+
   Future<void> _openFilters() async {
     final result = await showModalBottomSheet<Map<String, String?>>(
       context: context,
@@ -87,9 +138,46 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_cityName != null ? "Vehicles in $_cityName" : "Search"),
-        actions: [IconButton(icon: const Icon(Icons.tune), onPressed: _openFilters)],
+        actions: [
+          IconButton(
+            icon: Icon(_mapMode ? Icons.list : Icons.map_outlined),
+            tooltip: _mapMode ? "List view" : "Near me (map view)",
+            onPressed: _toggleMapMode,
+          ),
+          IconButton(icon: const Icon(Icons.tune), onPressed: _openFilters),
+        ],
       ),
-      body: _error != null && _items.isEmpty
+      body: _mapMode ? _buildMapView() : _buildListView(),
+    );
+  }
+
+  Widget _buildMapView() {
+    if (_loadingNearby) return const SectionLoading();
+    if (_nearbyError != null) return ErrorView(message: _nearbyError!, onRetry: _loadNearby);
+    if (_userLocation == null) return const SectionLoading();
+    if (_nearbyItems.isEmpty) {
+      return const EmptyState(icon: Icons.map_outlined, title: "No vehicles nearby", message: "Try again later or widen your filters.");
+    }
+    return gmaps.GoogleMap(
+      initialCameraPosition: gmaps.CameraPosition(target: _userLocation!, zoom: 12),
+      markers: {
+        gmaps.Marker(markerId: const gmaps.MarkerId("me"), position: _userLocation!, infoWindow: const gmaps.InfoWindow(title: "You")),
+        for (final v in _nearbyItems.where((v) => v.latitude != null && v.longitude != null))
+          gmaps.Marker(
+            markerId: gmaps.MarkerId(v.id),
+            position: gmaps.LatLng(v.latitude!, v.longitude!),
+            infoWindow: gmaps.InfoWindow(
+              title: v.model,
+              snippet: formatCurrency(v.pricePerDay),
+              onTap: () => context.push("/vehicle/${v.id}"),
+            ),
+          ),
+      },
+    );
+  }
+
+  Widget _buildListView() {
+    return _error != null && _items.isEmpty
           ? ErrorView(message: _error!, onRetry: () => _loadPage(reset: true))
           : RefreshIndicator(
               onRefresh: () => _loadPage(reset: true),
@@ -126,8 +214,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         },
                       ),
                     ),
-            ),
-    );
+            );
   }
 }
 

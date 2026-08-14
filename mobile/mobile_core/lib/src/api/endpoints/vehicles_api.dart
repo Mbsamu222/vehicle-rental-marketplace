@@ -56,6 +56,40 @@ class VehiclesApi {
     );
   }
 
+  Future<Paginated<Vehicle>> nearby({
+    required double latitude,
+    required double longitude,
+    double radiusKm = 10,
+    String? categoryId,
+    String? brandId,
+    String? transmission,
+    String? fuelType,
+    double? minPrice,
+    double? maxPrice,
+    int? seatingCapacity,
+    int page = 1,
+    int limit = 20,
+  }) {
+    return _client.getPaginated(
+      "/vehicles/nearby",
+      query: {
+        "latitude": latitude,
+        "longitude": longitude,
+        "radiusKm": radiusKm,
+        "categoryId": categoryId,
+        "brandId": brandId,
+        "transmission": transmission,
+        "fuelType": fuelType,
+        "minPrice": minPrice,
+        "maxPrice": maxPrice,
+        "seatingCapacity": seatingCapacity,
+        "page": page,
+        "limit": limit,
+      },
+      parseItem: Vehicle.fromJson,
+    );
+  }
+
   Future<Vehicle> byId(String id) => _client.get("/vehicles/$id", parse: (data) => Vehicle.fromJson(asJsonMap(data)));
 
   Future<bool> checkAvailability(String id, DateTime pickup, DateTime ret) => _client.get(

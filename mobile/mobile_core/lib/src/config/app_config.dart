@@ -30,4 +30,14 @@ class AppConfig {
   ///   flutter run --dart-define=PARTNER_WEB_URL=https://partners.example.com
   static String get partnerWebUrl =>
       _envPartnerWebUrl.isNotEmpty ? _envPartnerWebUrl : "http://localhost:5174";
+
+  static const String _envGoogleMapsApiKey = String.fromEnvironment("GOOGLE_MAPS_API_KEY");
+
+  /// Used for the Geocoding REST calls made directly from [LocationPickerPage]
+  /// (address search / reverse geocoding). The native Maps SDK key used to
+  /// actually *render* the map on Android/iOS is supplied separately, via
+  /// each app's Gradle property / Info.plist — `--dart-define` values aren't
+  /// visible to native manifest/plist templating at build time. Pass with:
+  ///   flutter run --dart-define=GOOGLE_MAPS_API_KEY=your-key-here
+  static String get googleMapsApiKey => _envGoogleMapsApiKey;
 }

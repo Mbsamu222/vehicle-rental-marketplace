@@ -27,7 +27,7 @@ from app.modules.vehicles.schemas import (
     Transmission,
     UpdateVehicleInput,
 )
-from app.modules.vehicles.service import find_unavailable_vehicle_ids
+from app.modules.vehicles.service import find_unavailable_vehicle_ids, haversine_km_expr
 
 router = APIRouter()
 
@@ -163,6 +163,68 @@ async def search(
             selectinload(Vehicle.rental_partner),
         )
         .order_by(*order_by)
+        .offset(pagination.skip)
+        .limit(pagination.take)
+    )
+    vehicles = (await db.execute(stmt)).scalars().all()
+    total = (await db.execute(select(func.count()).select_from(Vehicle).where(*conditions))).scalar_one()
+
+    return success_response(
+        [_serialize_vehicle(v, images=True, brand=True, category=True, city=True, rental_partner=True) for v in vehicles],
+        meta=pagination_meta(pagination.page, pagination.limit, total),
+    )
+
+
+@router.get("/nearby")
+async def nearby(
+    latitude: float = Query(..., ge=-90, le=90),
+    longitude: float = Query(..., ge=-180, le=180),
+    radiusKm: float = Query(default=10, gt=0, le=200),
+    categoryId: str | None = Query(default=None),
+    brandId: str | None = Query(default=None),
+    transmission: Transmission | None = Query(default=None),
+    fuelType: FuelType | None = Query(default=None),
+    minPrice: float | None = Query(default=None),
+    maxPrice: float | None = Query(default=None),
+    seatingCapacity: int | None = Query(default=None),
+    pagination: Pagination = Depends(get_pagination()),
+    db: AsyncSession = Depends(get_db),
+    _user: AuthUser | None = Depends(get_optional_user),
+):
+    distance = haversine_km_expr(latitude, longitude)
+    conditions = [
+        Vehicle.is_active.is_(True),
+        Vehicle.approval_status == VehicleApprovalStatus.APPROVED,
+        Vehicle.latitude.is_not(None),
+        Vehicle.longitude.is_not(None),
+        distance <= radiusKm,
+    ]
+    if categoryId:
+        conditions.append(Vehicle.category_id == categoryId)
+    if brandId:
+        conditions.append(Vehicle.brand_id == brandId)
+    if transmission:
+        conditions.append(Vehicle.transmission == transmission)
+    if fuelType:
+        conditions.append(Vehicle.fuel_type == fuelType)
+    if seatingCapacity:
+        conditions.append(Vehicle.seating_capacity >= seatingCapacity)
+    if minPrice is not None:
+        conditions.append(Vehicle.price_per_day >= minPrice)
+    if maxPrice is not None:
+        conditions.append(Vehicle.price_per_day <= maxPrice)
+
+    stmt = (
+        select(Vehicle)
+        .where(*conditions)
+        .options(
+            selectinload(Vehicle.images),
+            selectinload(Vehicle.brand),
+            selectinload(Vehicle.category),
+            selectinload(Vehicle.city),
+            selectinload(Vehicle.rental_partner),
+        )
+        .order_by(distance.asc())
         .offset(pagination.skip)
         .limit(pagination.take)
     )

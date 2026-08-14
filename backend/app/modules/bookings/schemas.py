@@ -13,6 +13,10 @@ class CreateBookingInput(BaseModel):
     returnDatetime: datetime
     pickupLocation: str = Field(min_length=1)
     returnLocation: str = Field(min_length=1)
+    pickupLatitude: float | None = Field(default=None, ge=-90, le=90)
+    pickupLongitude: float | None = Field(default=None, ge=-180, le=180)
+    returnLatitude: float | None = Field(default=None, ge=-90, le=90)
+    returnLongitude: float | None = Field(default=None, ge=-180, le=180)
     couponCode: str | None = None
     extraDriverCount: int = Field(default=0, ge=0, le=5)
     isYoungDriver: bool = False

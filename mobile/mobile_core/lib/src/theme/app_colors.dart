@@ -70,7 +70,8 @@ class AppColors {
   /// True when the ambient [ThemeData.brightness] is dark. Every shared
   /// widget below reads AppColors through the `*Of(context)` helpers so it
   /// switches automatically instead of always rendering the light palette
-  /// (mobile follows `ThemeMode.system`, same as the web apps' `prefers-color-scheme`).
+  /// (mobile starts on light/white, same as the web apps' default, and only
+  /// switches to dark when the user taps the theme toggle).
   static bool isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
 
   static Color surfaceOf(BuildContext context) => isDark(context) ? darkSurface : surface;

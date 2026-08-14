@@ -79,6 +79,8 @@ export interface City {
   isPopular: boolean;
   isActive: boolean;
   imageUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   country?: Country;
 }
 
@@ -130,6 +132,8 @@ export interface Vehicle {
   averageRating: string;
   totalReviews: number;
   totalBookings: number;
+  latitude?: number | null;
+  longitude?: number | null;
   createdAt: string;
   images?: VehicleImage[];
   category?: VehicleCategory;
@@ -146,6 +150,8 @@ export interface RentalPartner {
   businessPhone: string;
   cityId: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   logoUrl?: string | null;
   description?: string | null;
   verificationStatus: PartnerVerificationStatus;
@@ -193,6 +199,8 @@ export interface SavedLocation {
   cityId: string;
   label: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   city?: City;
 }
 
@@ -215,6 +223,10 @@ export interface Booking {
   returnDatetime: string;
   pickupLocation: string;
   returnLocation: string;
+  pickupLatitude?: number | null;
+  pickupLongitude?: number | null;
+  returnLatitude?: number | null;
+  returnLongitude?: number | null;
   basePrice: string;
   discountAmount: string;
   taxAmount: string;

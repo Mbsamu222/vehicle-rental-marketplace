@@ -69,6 +69,20 @@ class _AddLocationSheetState extends ConsumerState<_AddLocationSheet> {
   final _address = TextEditingController();
   String? _cityId;
   String? _error;
+  double? _latitude;
+  double? _longitude;
+
+  Future<void> _pickOnMap() async {
+    final result = await Navigator.of(context).push<LatLngResult>(
+      MaterialPageRoute(builder: (_) => const LocationPickerPage()),
+    );
+    if (result == null) return;
+    setState(() {
+      _latitude = result.latitude;
+      _longitude = result.longitude;
+      if (result.address != null && result.address!.isNotEmpty) _address.text = result.address!;
+    });
+  }
 
   @override
   void dispose() {
@@ -88,6 +102,8 @@ class _AddLocationSheetState extends ConsumerState<_AddLocationSheet> {
             cityId: _cityId!,
             label: _label.text.trim(),
             address: _address.text.trim(),
+            latitude: _latitude,
+            longitude: _longitude,
           );
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (e) {
@@ -121,7 +137,18 @@ class _AddLocationSheetState extends ConsumerState<_AddLocationSheet> {
               error: (e, _) => Text("$e"),
             ),
             const SizedBox(height: 16),
-            TextField(controller: _address, maxLines: 2, decoration: const InputDecoration(labelText: "Address")),
+            TextField(
+              controller: _address,
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: "Address",
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.map_outlined, color: AppColors.secondary),
+                  tooltip: "Pick on map",
+                  onPressed: _pickOnMap,
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
             LoadingButton(label: "Save location", onPressed: _submit),
           ],

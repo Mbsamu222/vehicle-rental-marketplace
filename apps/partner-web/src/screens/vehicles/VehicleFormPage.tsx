@@ -15,7 +15,7 @@ import {
   useCities,
   useMyPartnerProfile,
 } from "@vrm/api-client";
-import { Badge, Button, Card, Input, Select, Textarea, PageSpinner, PageTransition, useToast } from "@vrm/ui";
+import { Badge, Button, Card, Input, MapPicker, Select, Textarea, PageSpinner, PageTransition, useToast } from "@vrm/ui";
 
 const schema = z.object({
   categoryId: z.string().min(1, "Required"),
@@ -32,6 +32,8 @@ const schema = z.object({
   securityDeposit: z.coerce.number().min(0).optional(),
   insuranceDetails: z.string().max(2000).optional().or(z.literal("")),
   rentalPolicies: z.string().max(4000).optional().or(z.literal("")),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -51,6 +53,8 @@ export function VehicleFormPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -70,9 +74,20 @@ export function VehicleFormPage() {
           securityDeposit: Number(vehicle.securityDeposit),
           insuranceDetails: vehicle.insuranceDetails ?? "",
           rentalPolicies: vehicle.rentalPolicies ?? "",
+          latitude: vehicle.latitude ?? undefined,
+          longitude: vehicle.longitude ?? undefined,
         }
       : undefined,
   });
+
+  const cityId = watch("cityId");
+  const latitude = watch("latitude");
+  const longitude = watch("longitude");
+  const selectedCity = cities?.find((c) => c.id === cityId);
+  const cityCenter =
+    selectedCity?.latitude != null && selectedCity?.longitude != null
+      ? { lat: selectedCity.latitude, lng: selectedCity.longitude }
+      : undefined;
 
   if (isEdit && isLoading) return <PageSpinner />;
 
@@ -153,6 +168,16 @@ export function VehicleFormPage() {
             options={(cities ?? []).map((c) => ({ value: c.id, label: c.name }))}
             error={errors.cityId?.message}
             {...register("cityId")}
+          />
+          <MapPicker
+            label="Precise pickup location (optional)"
+            hint="Search an address or drag the pin to set exactly where customers should pick up this vehicle."
+            value={latitude != null && longitude != null ? { lat: latitude, lng: longitude } : null}
+            onChange={(val) => {
+              setValue("latitude", val?.lat, { shouldDirty: true });
+              setValue("longitude", val?.lng, { shouldDirty: true });
+            }}
+            defaultCenter={cityCenter}
           />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Input label="Model" error={errors.model?.message} {...register("model")} />

@@ -17,3 +17,26 @@ npm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# Flutter/Dart build artifacts & generated files
+*.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+local.properties
+GeneratedPluginRegistrant.*
+Generated.xcconfig
+flutter_export_environment.sh
+Flutter-Generated.xcconfig
+ephemeral/
+*.stamp
+gradlew
+gradlew.bat
+gradle-wrapper.jar
+*.gradle/
+
+# Misplaced mobile dirs (belong under mobile/, not apps/)
+apps/admin-mobile/
+apps/customer-mobile/
+apps/partner-mobile/

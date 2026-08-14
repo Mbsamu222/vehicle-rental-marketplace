@@ -19,6 +19,7 @@ export * from "./components/BookingStatusTimeline";
 export * from "./components/FileUpload";
 export * from "./components/ImageGallery";
 export * from "./components/DateRangeFields";
+export * from "./components/MapPicker";
 export * from "./components/RevealOnScroll";
 export * from "./components/Eyebrow";
 export * from "./components/GradientMesh";
